@@ -7770,8 +7770,7 @@
 
         ctx.restore();
     }
-
-   window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', () => {
         loadGameProgress();
         updateTitleUnlockStatus();
         resizeCanvas();
@@ -7786,13 +7785,13 @@
     if (window.__ALL_20_CHARS_PATCH_LOADED__) return;
     window.__ALL_20_CHARS_PATCH_LOADED__ = true;
 
-    // 1. 新キャラクター7体（ファントム＋新5体＋ヴィーナス）の登録
+    // 1. 追加キャラクター7体（ファントム＋新5体＋ヴィーナス）の登録
     var NEW_CHAR_LIST = ['phantom', 'chronos', 'pulserobo', 'vending', 'doppel', 'gigapump', 'venus'];
     NEW_CHAR_LIST.forEach(function(id) {
         if (!ALL_CHAR_IDS.includes(id)) ALL_CHAR_IDS.push(id);
     });
 
-    // チャレンジモードの魔王ラセツの前に6体（S12〜S17）を順番に挿入（魔王ラセツがS18 BOSS）
+    // チャレンジモードの魔王ラセツの前に6体（S12〜S17）を挿入（魔王ラセツがS18 BOSS）
     var CHALLENGE_NEW_STAGES = [
         { id: 'phantom',   hp: 2950, atkMult: 2.20, aiRate: 0.93, recLv: 10 },
         { id: 'chronos',   hp: 3020, atkMult: 2.22, aiRate: 0.94, recLv: 10 },
@@ -7823,12 +7822,12 @@
     CHAR_DISPLAY_NAMES.gigapump  = 'ギガ・パンプ';
     CHAR_DISPLAY_NAMES.venus     = 'ヴィーナス';
 
-    CHAR_CARD_META.phantom   = { role: '👻 透明怪異', name: 'ファントム',   desc: 'HP半減で透明化',   color: 'text-yellow-200' };
-    CHAR_CARD_META.chronos   = { role: '🕰️ 古時計',   name: 'クロノス',     desc: '時間停止・振り子', color: 'text-amber-300' };
-    CHAR_CARD_META.pulserobo = { role: '🤖 医療メカ', name: 'パルス・ロボ', desc: '自動蘇生・超磁力', color: 'text-teal-300' };
-    CHAR_CARD_META.vending   = { role: '🥫 自販機怪獣',name: '暴走自販機',   desc: '氷結缶＆灼熱缶',   color: 'text-rose-400' };
-    CHAR_CARD_META.doppel    = { role: '🃏 影道化師', name: 'ドッペル',     desc: '影分身2連撃',     color: 'text-purple-300' };
-    CHAR_CARD_META.gigapump  = { role: '💪 超ビルダー',name: 'ギガ・パンプ', desc: '被弾で巨大化',     color: 'text-orange-300' };
+    CHAR_CARD_META.phantom   = { role: '👻 透明怪異', name: 'ファントム',   desc: 'HP半減で透明化',     color: 'text-yellow-200' };
+    CHAR_CARD_META.chronos   = { role: '🕰️ 古時計',   name: 'クロノス',     desc: '時間停止・振り子',   color: 'text-amber-300' };
+    CHAR_CARD_META.pulserobo = { role: '🤖 医療メカ', name: 'パルス・ロボ', desc: '自動蘇生・超磁力',   color: 'text-teal-300' };
+    CHAR_CARD_META.vending   = { role: '🥫 自販機怪獣',name: '暴走自販機',   desc: '氷結缶＆灼熱缶',     color: 'text-rose-400' };
+    CHAR_CARD_META.doppel    = { role: '🃏 影道化師', name: 'ドッペル',     desc: '影分身2連撃',       color: 'text-purple-300' };
+    CHAR_CARD_META.gigapump  = { role: '💪 超ビルダー',name: 'ギガ・パンプ', desc: '被弾で巨大化',       color: 'text-orange-300' };
     CHAR_CARD_META.venus     = { role: '🪐 金星',     name: 'ヴィーナス',   desc: '酸性蒸気・惑星爆発', color: 'text-amber-300' };
 
     CHAR_MOVE_BUTTON_LABELS.phantom   = { light: '霊波パルス',       heavy: '真空・大波動刃',     special: '衝撃波動ブレイク' };
@@ -7840,7 +7839,7 @@
     CHAR_MOVE_BUTTON_LABELS.venus     = { light: '超重力・体当たり', heavy: '酸性蒸気＆衝撃波',   special: '惑星落下＆時間差爆発' };
 
     ['phantom', 'chronos', 'pulserobo', 'vending', 'doppel', 'gigapump'].forEach(function(id) {
-        CHAR_UNLOCK_REQ_DIFF[id] = 3; // チャレンジ【🥇激闘】勝利で解放（2929でも即解放）
+        CHAR_UNLOCK_REQ_DIFF[id] = 3; // チャレンジ【🥇激闘】勝利で解放（暗号2929でも即解放）
     });
 
     NEW_CHAR_LIST.forEach(function(id) {
@@ -7852,10 +7851,10 @@
         if (typeof challengeStageBestDiff[idx] !== 'number') challengeStageBestDiff[idx] = 0;
     });
 
-    // 2. UIカード・ステージバー・技表の動的生成
+    // 2. キャラ選択カード・チャレンジステージバー・技表の動的生成
     function injectCustomCharsDOM() {
         var ladderBar = document.getElementById('challenge-ladder-bar');
-        if (ladderBar) {
+        if (ladderBar && !document.getElementById('ladder-step-17')) {
             ladderBar.className = "hidden w-full max-w-4xl mx-auto mt-1.5 bg-zinc-950/90 border border-amber-500/60 rounded-xl p-1.5 sm:p-2 grid grid-cols-6 sm:grid-cols-9 gap-1 text-[10px] sm:text-[11px] flex-shrink-0";
             ladderBar.innerHTML = CHALLENGE_LADDER.map(function(cid, idx) {
                 var isBoss = idx === CHALLENGE_LADDER.length - 1;
@@ -7868,7 +7867,7 @@
             if (!maouCard || !maouCard.parentNode) return;
             var meta = CHAR_CARD_META[id];
             var existing = document.getElementById(side + '-card-' + id);
-            if (existing) existing.remove();
+            if (existing) return;
 
             var btn = document.createElement('button');
             btn.type = 'button';
@@ -7888,7 +7887,6 @@
         }
 
         ['p1', 'p2'].forEach(function(side) {
-            // 選択グリッドを見やすくし、カードが多い場合はスクロール可能にする
             var maouCard = document.getElementById(side + '-card-maou');
             if (maouCard && maouCard.parentNode) {
                 maouCard.parentNode.className = "grid grid-cols-4 sm:grid-cols-5 gap-1 max-h-[150px] sm:max-h-[175px] overflow-y-auto pr-0.5";
@@ -7911,13 +7909,11 @@
                 { id: 'gigapump',  cls: 'bg-orange-950/80 border-orange-400/80', html: '<strong class="text-orange-300">💪 ギガ・パンプ（ダメージを受けるほど筋肉が最大1.85倍までリアルタイム巨大化＆攻撃力上昇＆HP50%以下で弱攻撃アーマー！）：</strong>ダブルバイセップス衝撃波(弱) / プロテインシェイカー＆剛腕ラリアット(強) / ポージング覇気ボディプレス(崩) / フルパンプ1000kgダンベル大噴火(超)' },
                 { id: 'doppel',    cls: 'bg-purple-950/80 border-purple-400/80', html: '<strong class="text-purple-300">🃏 ドッペル（背後の『影分身』が0.3秒遅れて同じ技を繰り出し、全攻撃が時間差2連撃になる！）：</strong>カミソリトランプ2連射(弱) / パントマイム見えない壁粉砕(強) / 瞬間移動・シャドウ奇襲斬り(崩) / ミラーハウス百人分身総攻撃(超)' },
                 { id: 'vending',   cls: 'bg-rose-950/80 border-rose-400/80',     html: '<strong class="text-rose-300">🥫 暴走自販機（青い缶で敵を『氷結停止』させ、赤い缶で『火傷スリップダメージ』を与える！）：</strong>空き缶マシンガン連射(弱) / つめた〜い氷結缶＆あったか〜い灼熱缶(強) / 重量800kg自販機のしかかりプレス(崩) / 当たり777ルーレット大噴火(超)' },
-                { id: 'pulserobo', cls: 'bg-teal-950/80 border-teal-400/80',     html: '<strong class="text-teal-300">🤖 パルス・ロボ（HPが0になると1回だけ『360Jオートショック』で電撃を放ちHP30%で自動蘇生＆強・必殺技で相手を磁力吸引！）：</strong>スタンパドル連打(弱) / 超磁力吸引＆高圧電撃アッパー(強) / 360Jフルパワー除細動ショック(崩：敵ゲージ削り) / ハイボルテージ大放電(超)' },
+                { id: 'pulserobo', cls: 'bg-teal-950/80 border-teal-400/80',     html: '<strong class="text-teal-300">🤖 パルス・ロボ（HPが0になると1回だけ『360Jオートショック』で電撃を放ちHP30%で自動蘇生＆強・必殺技で相手を磁力吸引！）：</strong>スタンパドル連打(弱) / 超磁力吸引＆高圧電撃アッパー(強) / 360Jフルパワー除細動ショック(崩) / ハイボルテージ大放電(超)' },
                 { id: 'chronos',   cls: 'bg-yellow-950/80 border-amber-300/80',  html: '<strong class="text-amber-200">🕰️ クロノス（必殺技『崩・超』がヒットすると約2.5秒間、敵の時間を完全に止める『TIME STOP』発動！）：</strong>秒針レイピア高速突き(弱) / 黄金ギロチン振り子大スイング(強) / 12時の鐘・タイムフリーズ(崩：時間停止) / クロノス・ゼロ時空歯車嵐(超：時間停止)' },
                 { id: 'phantom',   cls: 'bg-slate-900/90 border-yellow-300/80',  html: '<strong class="text-yellow-200">👻 ファントム（HP50%以下で自動的に『INVISIBLE（完全透明化）』し、攻撃時の波動だけが見える！）：</strong>霊波パルス(弱) / 真空・大波動刃(強) / ファントム・ショックウェーブ(崩) / インビジブル・ディメンション(超)' }
             ];
             entries.forEach(function(item) {
-                var old = document.getElementById('moves-entry-' + item.id);
-                if (old) old.remove();
                 var div = document.createElement('div');
                 div.id = 'moves-entry-' + item.id;
                 div.className = 'p-3 rounded-xl border ' + item.cls;
@@ -8163,7 +8159,6 @@
         ctx.translate(x, y);
         ctx.scale(scale, scale);
 
-        // 時計屋根（アンティーク木製アーチ＋黄金飾り）
         ctx.fillStyle = '#451a03';
         ctx.strokeStyle = '#fbbf24';
         ctx.lineWidth = 2;
@@ -8171,7 +8166,6 @@
         ctx.roundRect(-28, -52, 56, 48, [26, 26, 6, 6]);
         ctx.fill(); ctx.stroke();
 
-        // 文字盤
         var dialGrad = ctx.createRadialGradient(0, -28, 2, 0, -28, 22);
         dialGrad.addColorStop(0, '#fef9c3');
         dialGrad.addColorStop(0.75, '#fde047');
@@ -8180,7 +8174,6 @@
         ctx.beginPath(); ctx.arc(0, -28, 21, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#78350f'; ctx.lineWidth = 1.5; ctx.stroke();
 
-        // 12個の目盛り
         for (var i = 0; i < 12; i++) {
             var a = (i / 12) * Math.PI * 2;
             ctx.beginPath();
@@ -8189,13 +8182,11 @@
             ctx.stroke();
         }
 
-        // 時計の中心でギョロつく一つ目
         ctx.fillStyle = isHit ? '#ef4444' : '#7c2d12';
         ctx.beginPath(); ctx.arc(2, -28, isAttacking ? 7.5 : 6.0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fef08a';
         ctx.beginPath(); ctx.arc(3, -28, 2.5, 0, Math.PI * 2); ctx.fill();
 
-        // 回転する長針・短針
         var hAng = frameCounter * 0.05;
         var mAng = frameCounter * 0.22;
         ctx.strokeStyle = '#18181b'; ctx.lineWidth = 2.5;
@@ -8214,7 +8205,6 @@
         if (this.state === 'ko') { ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 95); }
         ctx.translate(0, hoverY);
 
-        // 本体ケース（重厚なマホガニー木製柱時計）
         var woodGrad = ctx.createLinearGradient(-28, -140, 28, 0);
         woodGrad.addColorStop(0, '#78350f');
         woodGrad.addColorStop(0.5, '#451a03');
@@ -8224,14 +8214,12 @@
         ctx.lineWidth = 2.2;
         ctx.beginPath(); ctx.roundRect(-26, -118, 52, 112, 6); ctx.fill(); ctx.stroke();
 
-        // 内部の振り子窓（ガラス窓の奥で黄金のギロチン振り子が揺れる）
         ctx.fillStyle = '#09090b';
         ctx.strokeStyle = '#ca8a04';
         ctx.lineWidth = 1.5;
         ctx.fillRect(-18, -96, 36, 72);
         ctx.strokeRect(-18, -96, 36, 72);
 
-        // 黄金の刃振り子（強攻撃時は前方へ大スイング！）
         var pendAng = Math.sin(t * 0.14) * 0.35;
         var pendLen = 58;
         if (this.state === 'attack' && this.attackType === 'heavy') {
@@ -8247,7 +8235,6 @@
         ctx.beginPath(); ctx.arc(0, pendLen, this.state === 'attack' ? 22 : 13, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         ctx.restore();
 
-        // 攻撃時の針フェンシング＆時空歯車エフェクト
         if (this.state === 'attack') {
             var f = this.attackFrame;
             if (this.attackType === 'light') {
@@ -8275,29 +8262,25 @@
         ctx.translate(x, y);
         ctx.scale(scale, scale);
 
-        // 医療モニター筐体
         ctx.fillStyle = '#e2e8f0';
         ctx.strokeStyle = '#0d9488';
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.roundRect(-26, -46, 52, 40, 8); ctx.fill(); ctx.stroke();
 
-        // パトランプ（頭頂部の赤色回転灯）
         ctx.fillStyle = (frameCounter % 12 < 6 || isAttacking) ? '#ef4444' : '#7f1d1d';
         ctx.beginPath(); ctx.roundRect(-8, -55, 16, 9, [5, 5, 0, 0]); ctx.fill();
 
-        // モニター画面（黒背景＋リアルタイム心電図ECG波形）
         ctx.fillStyle = '#022c22';
         ctx.fillRect(-21, -41, 42, 30);
 
         ctx.strokeStyle = isHit ? '#ef4444' : '#4ade80';
         ctx.lineWidth = 2.2;
         ctx.beginPath();
-        var shift = (frameCounter * 2) % 40;
         ctx.moveTo(-20, -26);
         ctx.lineTo(-10, -26);
         ctx.lineTo(-6, -30);
         ctx.lineTo(-2, -18);
-        ctx.lineTo(2, -39); // R波ピーク
+        ctx.lineTo(2, -39);
         ctx.lineTo(6, -15);
         ctx.lineTo(10, -29);
         ctx.lineTo(20, -26);
@@ -8314,7 +8297,6 @@
         ctx.save();
         if (this.state === 'ko') { ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 95); }
 
-        // 医療キャスター車輪ベース
         ctx.fillStyle = '#334155';
         ctx.strokeStyle = '#94a3b8';
         ctx.lineWidth = 2;
@@ -8325,7 +8307,6 @@
             ctx.stroke();
         });
 
-        // 医療ロボット胴体（白＆ティールグリーン＋赤十字マーク）
         var bodyGrad = ctx.createLinearGradient(-24, -96, 26, -22);
         bodyGrad.addColorStop(0, '#ffffff');
         bodyGrad.addColorStop(0.7, '#cbd5e1');
@@ -8339,7 +8320,6 @@
         ctx.fillRect(-3, -72, 6, 20);
         ctx.fillRect(-10, -65, 20, 6);
 
-        // アーム＆除細動パドル（電気ショック）
         var rHandX = 44, rHandY = -74;
         if (this.state === 'attack') {
             rHandX = 95 + Math.sin(this.attackFrame * 0.8) * 35;
@@ -8347,7 +8327,6 @@
         }
         drawRoundedLimb(ctx, 16, -78, rHandX, rHandY, 10, 8, '#94a3b8', '#334155');
 
-        // 除細動パドル＆アーク放電
         ctx.fillStyle = '#0ea5e9';
         ctx.strokeStyle = '#facc15';
         ctx.lineWidth = 2;
@@ -8379,7 +8358,6 @@
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.roundRect(-26, -48, 52, 44, 5); ctx.fill(); ctx.stroke();
 
-        // ディスプレイ窓（つめた〜い青缶 ＆ あったか〜い赤缶）
         ctx.fillStyle = '#0f172a';
         ctx.fillRect(-21, -43, 42, 24);
         [-14, -4, 6, 14].forEach(function(cx, i) {
@@ -8387,7 +8365,6 @@
             ctx.fillRect(cx, -39, 6, 14);
         });
 
-        // 777ルーレット電光表示
         ctx.fillStyle = '#fde047';
         ctx.font = '900 10px monospace';
         ctx.textAlign = 'center';
@@ -8406,7 +8383,6 @@
         }
         ctx.translate(bodyX, bodyY);
 
-        // 赤い自販機フルボディ
         var vGrad = ctx.createLinearGradient(-34, -138, 34, 0);
         vGrad.addColorStop(0, '#ef4444');
         vGrad.addColorStop(0.6, '#dc2626');
@@ -8416,7 +8392,6 @@
         ctx.lineWidth = 2.5;
         ctx.beginPath(); ctx.roundRect(-32, -138, 64, 132, 6); ctx.fill(); ctx.stroke();
 
-        // ショーウィンドウ（上段：青いつめた〜い缶 ／ 下段：赤いあったか〜い缶）
         ctx.fillStyle = '#f8fafc';
         ctx.fillRect(-26, -128, 52, 54);
         ctx.fillStyle = '#0284c7'; ctx.fillRect(-24, -104, 48, 5);
@@ -8426,7 +8401,6 @@
             ctx.fillStyle = '#f97316'; ctx.fillRect(-20 + c * 11, -96, 8, 15);
         }
 
-        // 取り出し口の怪物マウス（牙）
         ctx.fillStyle = '#09090b';
         ctx.fillRect(-22, -46, 44, 24);
         ctx.fillStyle = '#ffffff';
@@ -8436,7 +8410,6 @@
             ctx.fill();
         }
 
-        // ゴツい鉄パイプ剛腕＆発射される氷結・灼熱缶
         var armX = this.state === 'attack' ? 88 : 42;
         drawRoundedLimb(ctx, 22, -78, armX, -72, 12, 10, '#64748b', '#1e293b');
 
@@ -8461,7 +8434,6 @@
         ctx.translate(x, y);
         ctx.scale(scale, scale);
 
-        // シルクハット
         ctx.fillStyle = isShadow ? '#09090b' : '#1e1b4b';
         ctx.strokeStyle = isShadow ? '#7e22ce' : '#c084fc';
         ctx.lineWidth = 1.6;
@@ -8469,7 +8441,6 @@
         ctx.fillRect(-16, -62, 32, 26);
         ctx.strokeRect(-16, -62, 32, 26);
 
-        // 白黒ツートン仮面
         ctx.fillStyle = isShadow ? '#18181b' : '#f8fafc';
         ctx.beginPath(); ctx.arc(0, -18, 17, 0, Math.PI * 2); ctx.fill();
         if (!isShadow) {
@@ -8478,7 +8449,6 @@
         }
         ctx.strokeStyle = '#a855f7'; ctx.stroke();
 
-        // 光る道化師の目
         ctx.fillStyle = isHit ? '#ef4444' : '#fde047';
         ctx.beginPath();
         ctx.arc(-6, -20, 3, 0, Math.PI * 2);
@@ -8509,7 +8479,6 @@
             var handX = self.state === 'attack' ? 98 : 38;
             drawRoundedLimb(ctx, 12, -122, handX, -116, 9, 7, suitCol, trimCol);
 
-            // 飛ぶカミソリトランプ
             if (self.state === 'attack') {
                 var cardX = handX + 18 + (self.attackFrame * 8);
                 ctx.fillStyle = isShadow ? '#a855f7' : '#ffffff';
@@ -8530,7 +8499,6 @@
             return;
         }
 
-        // 背後に常時追従する「影の分身（シャドウ）」を先に描画し、その手前に本体を描画
         var shadowOffsetX = this.state === 'attack' ? 36 : -34 + Math.sin(t * 0.15) * 6;
         renderMimeBody(shadowOffsetX, -6, true);
         renderMimeBody(0, 0, false);
@@ -8552,13 +8520,11 @@
         ctx.lineWidth = 1.6;
         ctx.beginPath(); ctx.roundRect(-18, -42, 36, 40, 10); ctx.fill(); ctx.stroke();
 
-        // 輝く白い歯のボディビルスマイル
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = '#451a03';
         ctx.lineWidth = 1.2;
         ctx.beginPath(); ctx.roundRect(-10, -14, 22, 9, 3); ctx.fill(); ctx.stroke();
 
-        // 眼光
         ctx.fillStyle = isAttacking ? '#fef08a' : '#ffffff';
         ctx.beginPath();
         ctx.arc(-5, -26, 3.2, 0, Math.PI * 2);
@@ -8568,8 +8534,6 @@
     };
 
     Fighter.prototype.drawGigaPump = function(ctx) {
-        var t = this.animTime;
-        // ★固有能力：HPが減るほどリアルタイムに1.0倍 ➔ 最大1.85倍（ラセツ級）へパンプアップ巨大化！
         var hpRatio = Math.max(0, Math.min(1, this.hp / Math.max(1, this.maxHp)));
         var pumpScale = 1.0 + (1.0 - hpRatio) * 0.85;
 
@@ -8581,11 +8545,9 @@
         var bronze2 = '#92400e';
         var outline = '#451a03';
 
-        // 筋骨隆々の脚
         drawRoundedLimb(ctx, -12, -88, -24, -5, 17, 12, bronze2, outline);
         drawRoundedLimb(ctx, 12, -88, 26, -5, 17, 12, bronze1, outline);
 
-        // 逆三角形の超バルク胴体
         var chestGrad = ctx.createLinearGradient(-32, -152, 32, -82);
         chestGrad.addColorStop(0, '#fbbf24');
         chestGrad.addColorStop(0.5, '#b45309');
@@ -8601,17 +8563,14 @@
         ctx.closePath();
         ctx.fill(); ctx.stroke();
 
-        // ポージングトランクス（赤）
         ctx.fillStyle = '#dc2626';
         ctx.beginPath(); ctx.roundRect(-21, -92, 42, 16, 4); ctx.fill(); ctx.stroke();
 
-        // 巨大な剛腕（ダブルバイセップス／ラリアット）
         var rHandX = this.state === 'attack' ? 88 : 42;
         var rHandY = this.state === 'attack' ? -136 : -158;
         drawRoundedLimb(ctx, -28, -142, -46, -162, 15, 13, bronze2, outline);
         drawRoundedLimb(ctx, 28, -142, rHandX, rHandY, 16, 14, bronze1, outline);
 
-        // パンプアップ発光オーラ（HP50%以下でスーパーアーマー輝き）
         if (hpRatio <= 0.5) {
             ctx.strokeStyle = 'rgba(250, 204, 21, 0.75)';
             ctx.lineWidth = 3;
@@ -8701,7 +8660,7 @@
         origDrawRealisticHead(ctx, id, x, y, scale, isHit);
     };
 
-    // 既存4キャラの描画補完
+    // 既存4キャラ（タイラント・成金院長・ベイビーゾンビ・ドラゴン）の描画補完
     if (typeof Fighter.prototype.drawTyrant !== 'function') {
         Fighter.prototype.drawTyrant = function(ctx) {
             var hipY = -102 + Math.sin(this.animTime * 0.12) * 2;
@@ -8743,7 +8702,7 @@
     var venusVisualExplosions = [];
     var doppelShadowQueue = [];
 
-    // 5. Fighter.prototype.draw 拡張（全追加キャラの描画ディスパッチ＋状態異常エフェクト表示）
+    // 5. Fighter.prototype.draw 拡張
     var origFighterDraw = Fighter.prototype.draw;
     Fighter.prototype.draw = function(ctx) {
         var customDrawMap = {
@@ -8781,7 +8740,6 @@
             origFighterDraw.call(this, ctx);
         }
 
-        // ❄️ 氷結停止中 ／ ⏱️ 時間停止中の相手頭上エフェクト表示
         if (this.timeStopTimer > 0 || this.freezeTimer > 0) {
             ctx.save();
             ctx.translate(this.x, Math.min(GROUND_Y, this.y));
@@ -8801,7 +8759,6 @@
             ctx.restore();
         }
 
-        // 🪐 ヴィーナスの時間差爆発の描画
         if (this.isP1) {
             for (var i = 0; i < venusDelayedBombs.length; i++) {
                 var b = venusDelayedBombs[i];
@@ -8918,7 +8875,7 @@
         this.burnTimer = 0;
     };
 
-    // 8. 攻撃開始時の特殊ギミック（パルス・ロボの超磁力吸引 ／ ドッペルの瞬間移動＆影分身予約）
+    // 8. 攻撃開始時の特殊ギミック
     var origStartAttack = Fighter.prototype.startAttack;
     Fighter.prototype.startAttack = function(type) {
         if (this.timeStopTimer > 0 || this.freezeTimer > 0) return false;
@@ -8949,7 +8906,7 @@
                     doppelShadowQueue.push({
                         attacker: this,
                         target: opponent,
-                        timer: 18, // 0.3秒遅れて影の分身が追撃！
+                        timer: 18,
                         damage: Math.round(moveData.damage * 0.45),
                         range: moveData.range + 25
                     });
@@ -8966,13 +8923,12 @@
         return started;
     };
 
-    // 9. ヒット解決時の固有ギミック（クロノス時間停止 ／ 自販機の氷結＆炎上 ／ ギガ・パンプのスーパーアーマー）
+    // 9. ヒット解決時の固有ギミック
     var origResolveHit = resolveHit;
     resolveHit = function(attacker, defender, move) {
         var prevDefState = defender.state;
         origResolveHit(attacker, defender, move);
 
-        // 💪 ギガ・パンプ固有能力：HP50%以下の時は相手の「弱攻撃」を受けてもひるまないスーパーアーマー！
         if (defender.id === 'gigapump' && defender.hp > 0 && defender.hp <= defender.maxHp * 0.5) {
             if (!move.isGuardBreak && !move.isSuper && move.damage < 80) {
                 defender.state = prevDefState === 'ko' ? 'idle' : prevDefState;
@@ -8982,22 +8938,19 @@
             }
         }
 
-        // 🕰️ クロノス固有能力：必殺技（崩・超）がヒットすると2.5秒間（150f）相手の時間を完全停止！
         if (attacker.id === 'chronos' && move.isTimeStop && defender.hp > 0) {
             defender.timeStopTimer = 150;
             sfx.chronosBellSound();
             spawnCallout('⏱️ TIME STOP!! (2.5秒間・時間完全停止)', defender.x, defender.y - 195, '#fde047');
         }
 
-        // 🥫 暴走自販機固有能力：強・必殺技ヒットで「❄️つめた〜い氷結停止」＆「🔥あったか〜い火傷スリップ」！
         if (attacker.id === 'vending' && move.isThermalCan && defender.hp > 0) {
-            defender.freezeTimer = 90; // 1.5秒間氷漬け停止
-            defender.burnTimer = 210;  // 3.5秒間火傷スリップ
+            defender.freezeTimer = 90;
+            defender.burnTimer = 210;
             spawnCallout('❄️つめた〜い氷結 ＆ 🔥あったか〜い火傷!!', defender.x, defender.y - 195, '#38bdf8');
         }
     };
 
-    // 🤖 パルス・ロボ固有能力：HPが0になった瞬間、1ラウンドに1回だけ「360J AUTO-SHOCK」で電撃を放ちHP30%で自動蘇生！
     var origCheckKO = checkKO;
     checkKO = function(attacker, defender, move) {
         if (defender.id === 'pulserobo' && defender.hp <= 0 && !defender.hasAutoRevived && gameState === 'playing') {
@@ -9015,7 +8968,6 @@
             spawnHitSparks(defender.x, defender.y - 90, '#fde047', 20);
             spawnCallout('⚡ 360J AUTO-SHOCK!! 自動蘇生 (HP30%回復)', defender.x, defender.y - 185, '#2dd4bf');
 
-            // 周囲の敵を電撃で吹き飛ばす
             if (attacker && Math.abs(attacker.x - defender.x) < 260) {
                 attacker.vx = -attacker.facing * 16;
                 attacker.vy = -8;
@@ -9028,7 +8980,6 @@
     // 10. 毎フレーム更新処理
     var origFighterUpdate = Fighter.prototype.update;
     Fighter.prototype.update = function(opponent) {
-        // ⏱️ 時間停止中 ／ ❄️ 氷結停止中は一切動けない
         if (this.timeStopTimer > 0 || this.freezeTimer > 0) {
             if (this.timeStopTimer > 0) this.timeStopTimer--;
             if (this.freezeTimer > 0) this.freezeTimer--;
@@ -9040,7 +8991,6 @@
             return;
         }
 
-        // 🔥 自販機のあったか〜い火傷スリップダメージ
         if (this.burnTimer > 0) {
             this.burnTimer--;
             if (this.hp > 1 && gameState === 'playing') {
@@ -9059,7 +9009,6 @@
             }
         }
 
-        // 💪 ギガ・パンプ：HP減少に応じて攻撃力が最大1.5倍までリアルタイム上昇！
         if (this.id === 'gigapump' && this.baseAtkMult) {
             var lostRatio = Math.max(0, Math.min(1, 1 - (this.hp / Math.max(1, this.maxHp))));
             this.atkMult = Number((this.baseAtkMult * (1 + lostRatio * 0.5)).toFixed(2));
@@ -9068,7 +9017,6 @@
         var wasVenus = this.id === 'venus';
         origFighterUpdate.call(this, opponent);
 
-        // 👻 ファントム：HP50%以下で自動透明化
         if (this.id === 'phantom' && gameState === 'playing') {
             if (this.hp > 0 && this.hp <= this.maxHp * 0.5) {
                 if (!this.isInvisible) {
@@ -9084,7 +9032,6 @@
             }
         }
 
-        // 🪐 ヴィーナス：惑星コア設置
         if (wasVenus && this.state === 'attack' && (this.attackType === 'special' || this.attackType === 'super')) {
             if (this.venusBombQueued && this.attackFrame === 15) {
                 this.venusBombQueued = false;
@@ -9108,7 +9055,6 @@
                 venusDelayedBombs = [];
                 doppelShadowQueue = [];
             } else {
-                // 🃏 ドッペルの影分身（シャドウ・エコー）時間差追撃処理
                 for (var s = doppelShadowQueue.length - 1; s >= 0; s--) {
                     var sq = doppelShadowQueue[s];
                     sq.timer--;
@@ -9130,7 +9076,6 @@
                     }
                 }
 
-                // 🪐 ヴィーナスの時間差惑星爆発処理
                 for (var i = venusDelayedBombs.length - 1; i >= 0; i--) {
                     var b = venusDelayedBombs[i];
                     b.x += (b.target.x - b.x) * 0.22;
@@ -9316,7 +9261,6 @@
             });
         }
 
-        // 未解放状態でも「？？？」に化けず、全追加キャラの名前・特徴が常に見えるように表示
         ['p1', 'p2'].forEach(function(side) {
             NEW_CHAR_LIST.forEach(function(id) {
                 var meta = CHAR_CARD_META[id];
@@ -9351,7 +9295,6 @@
     function initAll20CharsPatch() {
         injectCustomCharsDOM();
         loadGameProgress();
-        // すでに2929等で元の13キャラが全解放されているセーブデータなら、新キャラ7体もすべて自動解放！
         var base13Unlocked = ['ryuji', 'takeshi', 'sayuri', 'hanako', 'keita', 'ume', 'tyrant', 'gallo', 'incho', 'baby', 'dragon', 'bacteria', 'maou'].every(function(id) {
             return !!vsUnlocked[id];
         });
@@ -9365,11 +9308,8 @@
         refreshCharacterCardsUI();
     }
 
-    if (document.readyState === 'loading') {
-        window.addEventListener('DOMContentLoaded', initAll20CharsPatch);
-    } else {
-        initAll20CharsPatch();
-    }
+    initAll20CharsPatch();
+    window.addEventListener('DOMContentLoaded', initAll20CharsPatch);
 })();
 </script>
 </body>
