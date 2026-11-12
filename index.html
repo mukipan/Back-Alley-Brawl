@@ -4206,6 +4206,965 @@
             }
         }
 
+        drawTyrant(ctx) {
+            const t = this.animTime;
+            const breath = Math.sin(t * 0.1) * 2.5;
+            const isFishFlop = (this.state === 'attack' && (this.attackType === 'special' || this.attackType === 'super'));
+
+            let hipX = -4;
+            let hipY = -124 + breath * 0.6;
+            let torsoLean = 0.04;
+            let lFootX = -16, lFootY = -4;
+            let lKneeX = -12, lKneeY = -64;
+            let rKneeX = 38, rKneeY = -148 + breath;
+            let rFootX = 62, rFootY = -88 + breath;
+
+            let lElbowX = -46, lElbowY = -196 - breath;
+            let lHandX = -78, lHandY = -164 + breath;
+            let rElbowX = 28, rElbowY = -214 - breath;
+            let rHandX = 68, rHandY = -192 + breath;
+
+            if (this.state === 'walk') {
+                const cycle = t * 0.28;
+                lFootX = -14 + Math.sin(cycle) * 26;
+                lKneeY = -62 - Math.abs(Math.cos(cycle)) * 14;
+                rKneeX = 36 + Math.cos(cycle) * 14;
+                rFootX = 60 + Math.sin(cycle) * 18;
+            } else if (this.state === 'crouch') {
+                hipY = -92;
+                rKneeY = -118; rFootY = -58;
+                lElbowY = -158; rElbowY = -168;
+            } else if (this.state === 'ko') {
+                ctx.translate(0, -18);
+                ctx.rotate(-Math.PI / 2);
+                ctx.translate(0, 110);
+            } else if (this.state === 'attack') {
+                const f = this.attackFrame;
+                if (this.attackType === 'light') {
+                    const ext = (f >= 3 && f <= 10) ? 1 : 0.25;
+                    torsoLean = 0.24 * ext;
+                    rElbowX = 56 + ext * 44; rElbowY = -194;
+                    rHandX = 76 + ext * 102; rHandY = -172;
+                } else if (this.attackType === 'heavy') {
+                    const active = (f >= 6 && f <= 15);
+                    if (active) {
+                        torsoLean = -0.22;
+                        rKneeX = 74; rKneeY = -142;
+                        rFootX = 188; rFootY = -148;
+                    }
+                } else if (isFishFlop) {
+                    const flopSpeed = this.attackType === 'super' ? 1.85 : 1.45;
+                    const flop = Math.sin(f * flopSpeed);
+                    const flopCos = Math.cos(f * flopSpeed);
+                    const bounceH = Math.abs(Math.sin(f * 0.65)) * 68;
+                    ctx.translate(18, -110 - bounceH);
+                    ctx.rotate(1.18 + flop * 0.68);
+                    ctx.translate(-18, 110);
+
+                    hipX = 0; hipY = -112;
+                    torsoLean = flop * 0.55;
+                    lElbowX = -48 + flop * 38; lElbowY = -188 + flopCos * 35;
+                    lHandX = -88 - flop * 46;  lHandY = -155 - flopCos * 48;
+                    rElbowX = 48 - flop * 38;  rElbowY = -196 - flopCos * 35;
+                    rHandX = 92 + flop * 48;   rHandY = -165 + flopCos * 48;
+                    lKneeX = -32 + flopCos * 36; lKneeY = -58;
+                    lFootX = -56 - flop * 54;    lFootY = -8 + flopCos * 34;
+                    rKneeX = 42 - flopCos * 36;  rKneeY = -72;
+                    rFootX = 72 + flop * 54;     rFootY = -18 - flopCos * 34;
+
+                    ctx.strokeStyle = 'rgba(34, 211, 238, 0.78)';
+                    ctx.lineWidth = 4;
+                    for (let i = 0; i < 4; i++) {
+                        const ang = f * 0.9 + i * 1.57;
+                        ctx.beginPath();
+                        ctx.arc(0, -112, 68 + (i % 2) * 22, ang, ang + 0.85);
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            const cosT = Math.cos(torsoLean);
+            const sinT = Math.sin(torsoLean);
+            const shoulderCenterX = hipX + sinT * 62;
+            const shoulderCenterY = hipY - cosT * 62;
+            const skinLight = '#e2e8f0';
+            const skinDark = '#cbd5e1';
+            const skinBorder = '#475569';
+
+            const drawKungFuLongArm = (sx, sy, ex, ey, hx, hy, isFront) => {
+                const giRed = isFront ? '#dc2626' : '#991b1b';
+                const skinCol = isFront ? skinLight : skinDark;
+                drawRoundedLimb(ctx, sx, sy, ex, ey, 9.5, 8.2, giRed, '#450a0a');
+                const cuffX = ex + (hx - ex) * 0.36;
+                const cuffY = ey + (hy - ey) * 0.36;
+                drawRoundedLimb(ctx, ex, ey, cuffX, cuffY, 8.5, 8.0, '#f8fafc', '#64748b');
+                drawRoundedLimb(ctx, cuffX, cuffY, hx, hy, 6.2, 5.2, skinCol, skinBorder);
+                ctx.fillStyle = skinCol;
+                ctx.strokeStyle = skinBorder;
+                ctx.lineWidth = 1.6;
+                ctx.beginPath();
+                ctx.arc(hx, hy, 10.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            };
+
+            drawKungFuLongArm(shoulderCenterX - 12, shoulderCenterY + 4, lElbowX, lElbowY, lHandX, lHandY, false);
+
+            const drawKungFuLongLeg = (hx, hy, kx, ky, fx, fy, isFront) => {
+                const pantCol = isFront ? '#1e293b' : '#0f172a';
+                drawRoundedLimb(ctx, hx, hy, kx, ky, 11.5, 9.5, pantCol, '#020617');
+                const shinWrapX = kx + (fx - kx) * 0.72;
+                const shinWrapY = ky + (fy - ky) * 0.72;
+                drawRoundedLimb(ctx, kx, ky, shinWrapX, shinWrapY, 9.5, 7.5, pantCol, '#020617');
+                drawRoundedLimb(ctx, shinWrapX, shinWrapY, fx, fy, 6.8, 5.8, '#f8fafc', '#64748b');
+                ctx.fillStyle = '#09090b';
+                ctx.strokeStyle = '#f8fafc';
+                ctx.lineWidth = 1.6;
+                ctx.beginPath();
+                ctx.moveTo(fx - 7, fy - 4);
+                ctx.lineTo(fx + 20, fy - 9);
+                ctx.lineTo(fx + 14, fy + 6);
+                ctx.lineTo(fx - 7, fy + 5);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            };
+            drawKungFuLongLeg(hipX - 6, hipY, lKneeX, lKneeY, lFootX, lFootY, false);
+            drawKungFuLongLeg(hipX + 6, hipY, rKneeX, rKneeY, rFootX, rFootY, true);
+
+            ctx.save();
+            ctx.translate(hipX, hipY);
+            ctx.rotate(torsoLean);
+            const giGrad = ctx.createLinearGradient(-16, -66, 18, 8);
+            giGrad.addColorStop(0, '#ef4444');
+            giGrad.addColorStop(0.55, '#b91c1c');
+            giGrad.addColorStop(1, '#7f1d1d');
+            ctx.fillStyle = giGrad;
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 2.0;
+            ctx.beginPath();
+            ctx.roundRect(-16, -64, 32, 70, 9);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#18181b';
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 1.5;
+            ctx.fillRect(-10, -68, 20, 7);
+            ctx.strokeRect(-10, -68, 20, 7);
+            [-50, -38, -26].forEach(by => {
+                ctx.fillStyle = '#fbbf24';
+                ctx.fillRect(-5, by, 10, 2.2);
+                ctx.beginPath(); ctx.arc(0, by + 1, 2.2, 0, Math.PI * 2); ctx.fill();
+            });
+
+            ctx.fillStyle = '#18181b';
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 1.5;
+            ctx.fillRect(-17.5, -10, 35, 9);
+            ctx.strokeRect(-17.5, -10, 35, 9);
+
+            drawTyrantHead(ctx, 2, -88, 1.0, this.state === 'hit', this.state === 'attack');
+            ctx.restore();
+
+            drawKungFuLongArm(shoulderCenterX + 10, shoulderCenterY + 4, rElbowX, rElbowY, rHandX, rHandY, true);
+        }
+
+        drawIncho(ctx) {
+            const t = this.animTime;
+            const breath = Math.sin(t * 0.11) * 2.2;
+
+            let hipX = -4;
+            let hipY = -88 + breath * 0.5;
+            let torsoLean = 0.05;
+            let lFootX = -24, lFootY = -5;
+            let rFootX = 24, rFootY = -5;
+            let lHandX = -20, lHandY = -124 + breath;
+            let rHandX = 44, rHandY = -132 + breath;
+
+            let showCoinThrow = false;
+            let showMoneySlap = false;
+            let showLuxuryCar = false;
+            let wadAngle = -0.25;
+
+            if (this.state === 'walk') {
+                const cycle = t * 0.27;
+                const stride = Math.sin(cycle) * 24;
+                lFootX = -6 + stride; rFootX = 6 - stride;
+                lFootY = -5 - Math.max(0, Math.cos(cycle) * 11);
+                rFootY = -5 - Math.max(0, -Math.cos(cycle) * 11);
+                hipY = -86 + Math.abs(Math.sin(cycle)) * 4;
+            } else if (this.state === 'crouch') {
+                hipY = -66; torsoLean = 0.22;
+                lHandY = -102; rHandY = -108;
+            } else if (this.state === 'ko') {
+                ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 88);
+            } else if (this.state === 'attack') {
+                const f = this.attackFrame;
+                if (this.attackType === 'light') {
+                    showCoinThrow = true;
+                    const ext = (f >= 3 && f <= 10) ? 1 : 0.25;
+                    torsoLean = 0.22 * ext;
+                    rHandX = 42 + ext * 44; rHandY = -138;
+                } else if (this.attackType === 'heavy') {
+                    showMoneySlap = true;
+                    const active = (f >= 7 && f <= 16);
+                    torsoLean = active ? 0.38 : -0.18;
+                    rHandX = active ? 82 : 12;
+                    rHandY = active ? -128 : -156;
+                    wadAngle = active ? 0.85 : -0.75;
+                } else if (this.attackType === 'special' || this.attackType === 'super') {
+                    showLuxuryCar = true;
+                    torsoLean = 0.26;
+                    rHandX = 64; rHandY = -142;
+                }
+            }
+
+            const cosT = Math.cos(torsoLean);
+            const sinT = Math.sin(torsoLean);
+            const shoulderCenterX = hipX + sinT * 56;
+            const shoulderCenterY = hipY - cosT * 56;
+
+            const drawDirectorArm = (sx, sy, hx, hy, isFront) => {
+                const elbow = solveIK(sx, sy, hx, hy, 31, 31, 1, 'arm');
+                const coatCol = isFront ? '#ffffff' : '#e2e8f0';
+                const skinCol = isFront ? '#f2be9f' : '#d99b78';
+                drawRoundedLimb(ctx, sx, sy, elbow.jx, elbow.jy, 14, 12, coatCol, '#64748b');
+                drawRoundedLimb(ctx, elbow.jx, elbow.jy, hx, hy, 12, 9.5, coatCol, '#64748b');
+                if (isFront) {
+                    ctx.fillStyle = '#facc15';
+                    ctx.strokeStyle = '#713f12';
+                    ctx.lineWidth = 1.2;
+                    ctx.fillRect(hx - 8, hy - 5, 7, 10);
+                    ctx.strokeRect(hx - 8, hy - 5, 7, 10);
+                }
+                ctx.fillStyle = skinCol;
+                ctx.strokeStyle = '#7c4a2d';
+                ctx.lineWidth = 1.4;
+                ctx.beginPath(); ctx.arc(hx, hy, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#fde047';
+                ctx.beginPath(); ctx.arc(hx + 5, hy - 2, 2.2, 0, Math.PI * 2); ctx.fill();
+            };
+
+            drawDirectorArm(shoulderCenterX - 14, shoulderCenterY + 5, lHandX, lHandY, false);
+
+            const lKnee = solveIK(hipX - 10, hipY, lFootX, lFootY, 40, 40, 1, 'leg');
+            const rKnee = solveIK(hipX + 10, hipY, rFootX, rFootY, 40, 40, 1, 'leg');
+            [
+                [hipX - 10, hipY, lKnee.jx, lKnee.jy, lFootX, lFootY, false],
+                [hipX + 10, hipY, rKnee.jx, rKnee.jy, rFootX, rFootY, true]
+            ].forEach(([hx, hy, kx, ky, fx, fy, isFront]) => {
+                const suitCol = isFront ? '#312e81' : '#1e1b4b';
+                drawRoundedLimb(ctx, hx, hy, kx, ky, 16, 13, suitCol, '#0f172a');
+                drawRoundedLimb(ctx, kx, ky, fx, fy, 13, 10, suitCol, '#0f172a');
+                ctx.fillStyle = '#09090b';
+                ctx.strokeStyle = '#facc15';
+                ctx.lineWidth = 1.4;
+                ctx.beginPath(); ctx.roundRect(fx - 10, fy - 7, 27, 12, 4); ctx.fill(); ctx.stroke();
+            });
+
+            ctx.save();
+            ctx.translate(hipX, hipY);
+            ctx.rotate(torsoLean);
+
+            const bellyGrad = ctx.createRadialGradient(10, -28, 5, 4, -28, 44);
+            bellyGrad.addColorStop(0, '#581c87');
+            bellyGrad.addColorStop(0.65, '#3b0764');
+            bellyGrad.addColorStop(1, '#1e1b4b');
+            ctx.fillStyle = bellyGrad;
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.ellipse(6, -30, 35, 36, 0.05, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#18181b';
+            ctx.fillRect(-26, -10, 60, 8);
+            ctx.fillStyle = '#facc15';
+            ctx.strokeStyle = '#713f12';
+            ctx.lineWidth = 1.4;
+            ctx.fillRect(10, -12, 16, 12);
+            ctx.strokeRect(10, -12, 16, 12);
+
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.moveTo(8, -62); ctx.lineTo(18, -22); ctx.lineTo(11, -14); ctx.lineTo(4, -22);
+            ctx.closePath();
+            ctx.fill();
+
+            const coatGrad = ctx.createLinearGradient(-28, -68, 12, 18);
+            coatGrad.addColorStop(0, '#ffffff');
+            coatGrad.addColorStop(0.6, '#f8fafc');
+            coatGrad.addColorStop(1, '#cbd5e1');
+            ctx.fillStyle = coatGrad;
+            ctx.strokeStyle = '#eab308';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(-26, -64);
+            ctx.lineTo(4, -64);
+            ctx.quadraticCurveTo(10, -24, 4, 14);
+            ctx.lineTo(-28, 12);
+            ctx.quadraticCurveTo(-34, -26, -26, -64);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#bef264';
+            ctx.strokeStyle = '#365314';
+            ctx.lineWidth = 1.2;
+            ctx.fillRect(-16, -48, 14, 9);
+            ctx.strokeRect(-16, -48, 14, 9);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-18, -40, 18, 14);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.strokeRect(-18, -40, 18, 14);
+
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.arc(6, -54, 14, 0.15, Math.PI - 0.15);
+            ctx.stroke();
+            ctx.fillStyle = '#fde047';
+            ctx.strokeStyle = '#854d0e';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(12, -37, 7.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#713f12';
+            ctx.font = '900 10px "Black Ops One", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('¥', 12, -33.5);
+
+            drawInchoHead(ctx, 4, -68, 1.0, this.state === 'hit', this.state === 'attack');
+            ctx.restore();
+
+            drawDirectorArm(shoulderCenterX + 10, shoulderCenterY + 6, rHandX, rHandY, true);
+            drawMoneyWad(ctx, rHandX + 12, rHandY - 4, showMoneySlap ? wadAngle : -0.2, showMoneySlap ? 1.35 : 1.0, showMoneySlap);
+
+            if (showCoinThrow) {
+                const f = this.attackFrame;
+                const reach = Math.min(1, f / 9) * 145;
+                for (let i = 0; i < 6; i++) {
+                    const cx = rHandX + 18 + reach * ((i + 1) / 6) + Math.sin(f + i) * 6;
+                    const cy = rHandY - 12 + (i % 3 - 1) * 14;
+                    ctx.fillStyle = (i % 2 === 0) ? '#facc15' : '#e2e8f0';
+                    ctx.strokeStyle = '#713f12';
+                    ctx.lineWidth = 1.4;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 6.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = '#713f12';
+                    ctx.font = '900 7px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('500', cx, cy + 2.5);
+                }
+            }
+
+            if (showMoneySlap && this.attackFrame >= 6 && this.attackFrame <= 17) {
+                ctx.strokeStyle = 'rgba(250, 204, 21, 0.8)';
+                ctx.lineWidth = 10;
+                ctx.beginPath();
+                ctx.arc(shoulderCenterX + 24, shoulderCenterY, 74, -0.55, 0.55);
+                ctx.stroke();
+            }
+
+            if (showLuxuryCar) {
+                const f = this.attackFrame;
+                if (this.attackType === 'special' && f >= 8) {
+                    const carX = -15 + (f - 8) * 14;
+                    drawGoldenLuxuryCar(ctx, carX, 0, 1.18, f * 0.8);
+                } else if (this.attackType === 'super') {
+                    const carX1 = ((f * 20) % 340) - 40;
+                    const carX2 = (((f * 20) + 170) % 340) - 40;
+                    drawGoldenLuxuryCar(ctx, carX1, -8, 1.12, f * 0.9);
+                    drawGoldenLuxuryCar(ctx, carX2, 4, 1.28, f * 0.9 + 1.5);
+                    for (let b = 0; b < 5; b++) {
+                        const bx = 20 + ((f * 19 + b * 43) % 190);
+                        const by = -180 + ((f * 11 + b * 37) % 140);
+                        drawMoneyWad(ctx, bx, by, f * 0.2 + b, 0.75, false);
+                    }
+                }
+            }
+        }
+
+        drawBaby(ctx) {
+            const t = this.animTime;
+            const twitch = Math.sin(t * 0.28) * 1.6;
+
+            let hipX = 2;
+            let hipY = -44 + twitch * 0.5;
+            let torsoLean = 0.16;
+            let bounceY = 0;
+
+            let lFootX = -16, lFootY = -3;
+            let rFootX = 18, rFootY = -3;
+            let lHandX = -18, lHandY = -66 + twitch;
+            let rHandX = 30, rHandY = -68 - twitch;
+
+            let showRattleFlurry = false;
+            let showCleaverJump = false;
+            let showChainsawRush = false;
+            let cleaverAngle = -0.35;
+            let rattleAngle = 0.25;
+
+            if (this.state === 'walk') {
+                const cycle = t * 0.48;
+                const stride = Math.sin(cycle) * 20;
+                lFootX = -4 + stride;
+                rFootX = 4 - stride;
+                lFootY = -3 - Math.max(0, Math.cos(cycle) * 10);
+                rFootY = -3 - Math.max(0, -Math.cos(cycle) * 10);
+                hipY = -42 - Math.abs(Math.sin(cycle * 2)) * 5;
+                torsoLean = 0.28;
+            } else if (this.state === 'crouch') {
+                hipY = -32;
+                torsoLean = 0.34;
+                lHandY = -52;
+                rHandY = -54;
+            } else if (this.state === 'ko') {
+                ctx.translate(0, -10);
+                ctx.rotate(-Math.PI / 2);
+                ctx.translate(0, 45);
+            } else if (this.state === 'attack') {
+                const f = this.attackFrame;
+                if (this.attackType === 'light') {
+                    showRattleFlurry = true;
+                    const ext = (f >= 2 && f <= 9) ? 1 : 0.3;
+                    torsoLean = 0.32 * ext;
+                    lHandX = 26 + ext * 44;
+                    lHandY = -68 + Math.sin(f * 2.2) * 14;
+                    rattleAngle = 1.15 + Math.sin(f * 2.2) * 0.55;
+                } else if (this.attackType === 'heavy') {
+                    showCleaverJump = true;
+                    const active = (f >= 5 && f <= 15);
+                    bounceY = active ? -36 * Math.sin(((f - 4) / 12) * Math.PI) : -12;
+                    torsoLean = active ? 0.42 : -0.25;
+                    rHandX = active ? 58 : -6;
+                    rHandY = (active ? -58 : -96) + bounceY;
+                    cleaverAngle = active ? 1.42 : -0.85;
+                } else if (this.attackType === 'special' || this.attackType === 'super') {
+                    showChainsawRush = true;
+                    const wave = Math.sin(f * 1.65);
+                    bounceY = -Math.abs(Math.sin(f * 0.65)) * 28;
+                    torsoLean = 0.36;
+                    rHandX = 48 + wave * 24;
+                    rHandY = -62 + bounceY + Math.cos(f * 1.65) * 12;
+                    lHandX = 36 - wave * 20;
+                    lHandY = -58 + bounceY;
+                }
+            }
+
+            ctx.save();
+            ctx.translate(0, bounceY);
+
+            const cosT = Math.cos(torsoLean);
+            const sinT = Math.sin(torsoLean);
+            const shoulderCenterX = hipX + sinT * 34;
+            const shoulderCenterY = hipY - cosT * 34;
+
+            const rotAura = ctx.createRadialGradient(hipX, hipY - 25, 6, hipX, hipY - 25, 58);
+            rotAura.addColorStop(0, 'rgba(132, 204, 22, 0.28)');
+            rotAura.addColorStop(0.6, 'rgba(88, 28, 135, 0.16)');
+            rotAura.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = rotAura;
+            ctx.beginPath();
+            ctx.ellipse(hipX, hipY - 25, 54, 52, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            const drawHulkingBabyZombieArm = (sx, sy, hx, hy, isFront) => {
+                const elbow = solveIK(sx, sy, hx, hy, 25, 25, 1, 'arm');
+                const skinCol = isFront ? '#84cc16' : '#4d7c0f';
+                const darkSkin = '#1a2e05';
+
+                drawRoundedLimb(ctx, sx, sy, elbow.jx, elbow.jy, 13.5, 11.5, skinCol, darkSkin);
+                ctx.strokeStyle = '#581c87';
+                ctx.lineWidth = 1.6;
+                ctx.beginPath();
+                ctx.moveTo(sx, sy + 2);
+                ctx.quadraticCurveTo((sx + elbow.jx) * 0.5 + 4, (sy + elbow.jy) * 0.5 - 3, elbow.jx, elbow.jy);
+                ctx.stroke();
+
+                drawRoundedLimb(ctx, elbow.jx, elbow.jy, hx, hy, 11.5, 9.5, skinCol, darkSkin);
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 1.3;
+                ctx.beginPath();
+                const mx = (elbow.jx + hx) * 0.5;
+                const my = (elbow.jy + hy) * 0.5;
+                ctx.moveTo(mx - 4, my - 3); ctx.lineTo(mx + 4, my + 3);
+                ctx.stroke();
+
+                ctx.fillStyle = skinCol;
+                ctx.strokeStyle = darkSkin;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(hx, hy, 9.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            };
+
+            drawHulkingBabyZombieArm(shoulderCenterX - 11, shoulderCenterY + 3, lHandX, lHandY, false);
+            drawSpikedBabyRattle(ctx, lHandX + 4, lHandY - 2, rattleAngle, showRattleFlurry ? 1.18 : 0.92);
+
+            const lKnee = solveIK(hipX - 8, hipY, lFootX, lFootY, 21, 21, 1, 'leg');
+            const rKnee = solveIK(hipX + 8, hipY, rFootX, rFootY, 21, 21, 1, 'leg');
+            [
+                [hipX - 8, hipY, lKnee.jx, lKnee.jy, lFootX, lFootY, false],
+                [hipX + 8, hipY, rKnee.jx, rKnee.jy, rFootX, rFootY, true]
+            ].forEach(([hx, hy, kx, ky, fx, fy, isFront]) => {
+                const legCol = isFront ? '#65a30d' : '#3f6212';
+                drawRoundedLimb(ctx, hx, hy, kx, ky, 10.5, 8.5, legCol, '#1a2e05');
+                drawRoundedLimb(ctx, kx, ky, fx, fy, 8.5, 6.5, legCol, '#1a2e05');
+                ctx.fillStyle = legCol;
+                ctx.strokeStyle = '#1a2e05';
+                ctx.lineWidth = 1.3;
+                ctx.beginPath();
+                ctx.ellipse(fx + 3, fy - 2, 10, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            });
+
+            ctx.save();
+            ctx.translate(hipX, hipY);
+            ctx.rotate(torsoLean);
+
+            const torsoGrad = ctx.createRadialGradient(3, -18, 3, 0, -18, 26);
+            torsoGrad.addColorStop(0, '#a3e635');
+            torsoGrad.addColorStop(0.6, '#65a30d');
+            torsoGrad.addColorStop(1, '#365314');
+            ctx.fillStyle = torsoGrad;
+            ctx.strokeStyle = '#1a2e05';
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.ellipse(2, -18, 20, 21, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#450a0a';
+            ctx.beginPath();
+            ctx.ellipse(-5, -18, 7, 9, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#f1f5f9';
+            ctx.lineWidth = 2.0;
+            ctx.beginPath();
+            [-23, -18, -13].forEach(ry => {
+                ctx.moveTo(-10, ry); ctx.lineTo(0, ry + 1);
+            });
+            ctx.stroke();
+
+            ctx.fillStyle = '#e2e8f0';
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(-18, -8, 38, 16, 6);
+            ctx.fill();
+            ctx.stroke();
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(4, -5, 9, 4);
+
+            ctx.fillStyle = '#fef3c7';
+            ctx.strokeStyle = '#b45309';
+            ctx.lineWidth = 1.3;
+            ctx.beginPath();
+            ctx.arc(5, -31, 13, 0, Math.PI);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.arc(8, -24, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            drawBabyZombieHead(ctx, 4, -38, 1.0, this.state === 'hit', this.state === 'attack');
+            ctx.restore();
+
+            drawHulkingBabyZombieArm(shoulderCenterX + 9, shoulderCenterY + 4, rHandX, rHandY, true);
+
+            if (showChainsawRush) {
+                const f = this.attackFrame;
+                drawZombieChainsaw(ctx, rHandX, rHandY, 0.08 + Math.sin(f * 1.5) * 0.22, 1.08, f);
+                if (this.attackType === 'super') {
+                    for (let w = 0; w < 3; w++) {
+                        const wx = 45 + ((f * 18 + w * 45) % 130);
+                        const wy = -95 + Math.sin(f * 0.8 + w * 2) * 35;
+                        drawZombieCleaver(ctx, wx, wy, f * 0.65 + w, 0.88);
+                    }
+                }
+            } else {
+                drawZombieCleaver(ctx, rHandX + 4, rHandY, cleaverAngle, showCleaverJump ? 1.22 : 0.96);
+            }
+
+            if (showRattleFlurry && this.attackFrame >= 2 && this.attackFrame <= 11) {
+                ctx.strokeStyle = 'rgba(163, 230, 53, 0.85)';
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.arc(shoulderCenterX + 35, shoulderCenterY, 46, -0.65, 0.65);
+                ctx.stroke();
+            }
+            if (showCleaverJump && this.attackFrame >= 5 && this.attackFrame <= 16) {
+                ctx.strokeStyle = 'rgba(220, 38, 38, 0.88)';
+                ctx.lineWidth = 10;
+                ctx.beginPath();
+                ctx.arc(shoulderCenterX + 26, shoulderCenterY - 12, 68, -0.75, 0.75);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        drawDragon(ctx) {
+            const t = this.animTime;
+            const isAirborne = !this.isGrounded || this.isFlying;
+            const wingFlap = Math.sin(t * (isAirborne ? 0.42 : 0.14));
+            const breath = Math.sin(t * 0.11) * 2.4;
+
+            ctx.save();
+            ctx.scale(1.22, 1.22);
+
+            let hipX = -6;
+            let hipY = -96 + breath * 0.5;
+            let torsoLean = isAirborne ? 0.24 : 0.16;
+            let jawOpen = isAirborne ? 0.35 : 0.2;
+
+            let lFootX = -24, lFootY = isAirborne ? -22 + wingFlap * 6 : -4;
+            let rFootX = 24, rFootY = isAirborne ? -28 - wingFlap * 6 : -4;
+            let lHandX = 24, lHandY = -124 + breath;
+            let rHandX = 48, rHandY = -132 - breath;
+
+            let showClawSlash = false;
+            let showCrunchBite = false;
+            let showFireBreath = false;
+
+            if (this.state === 'walk' && !isAirborne) {
+                const cycle = t * 0.26;
+                const stride = Math.sin(cycle) * 26;
+                lFootX = -6 + stride;
+                rFootX = 6 - stride;
+                lFootY = -4 - Math.max(0, Math.cos(cycle) * 12);
+                rFootY = -4 - Math.max(0, -Math.cos(cycle) * 12);
+                hipY = -94 + Math.abs(Math.sin(cycle)) * 4;
+            } else if (this.state === 'crouch') {
+                hipY = -74;
+                torsoLean = 0.28;
+                lHandY = -105;
+                rHandY = -108;
+            } else if (this.state === 'ko') {
+                ctx.translate(0, -18);
+                ctx.rotate(-Math.PI / 2);
+                ctx.translate(0, 95);
+            } else if (this.state === 'attack') {
+                const f = this.attackFrame;
+                if (this.attackType === 'light') {
+                    showClawSlash = true;
+                    const ext = (f >= 3 && f <= 10) ? 1 : 0.3;
+                    torsoLean = 0.32 * ext;
+                    jawOpen = 0.78 * ext;
+                    rHandX = 44 + ext * 52;
+                    rHandY = -134 + Math.sin(f * 1.6) * 12;
+                } else if (this.attackType === 'heavy') {
+                    showCrunchBite = true;
+                    const windup = f < 8;
+                    const snap = (f >= 8 && f <= 16);
+                    torsoLean = windup ? -0.15 : (snap ? 0.46 : 0.22);
+                    jawOpen = windup ? 1.25 : (snap ? 0.12 : 0.45);
+                    rHandX = snap ? 74 : 22;
+                    rHandY = snap ? -118 : -148;
+                    lHandX = snap ? 58 : 12;
+                    lHandY = snap ? -112 : -142;
+                } else if (this.attackType === 'special' || this.attackType === 'super') {
+                    if (f < 11 && this.attackType === 'special') {
+                        torsoLean = -0.18;
+                        jawOpen = 0.55;
+                    } else {
+                        torsoLean = 0.36;
+                        jawOpen = 1.25;
+                        showFireBreath = true;
+                        rHandX = 36; rHandY = -118;
+                        lHandX = 18; lHandY = -114;
+                    }
+                }
+            }
+
+            const cosT = Math.cos(torsoLean);
+            const sinT = Math.sin(torsoLean);
+            const shoulderCenterX = hipX + sinT * 60;
+            const shoulderCenterY = hipY - cosT * 60;
+
+            if (this.isFlying) {
+                ctx.save();
+                const pulse = Math.sin(t * 0.35) * 6;
+                const shieldGrad = ctx.createRadialGradient(0, hipY - 18, 12, 0, hipY - 18, 92 + pulse);
+                shieldGrad.addColorStop(0, 'rgba(56, 189, 248, 0.08)');
+                shieldGrad.addColorStop(0.7, 'rgba(56, 189, 248, 0.28)');
+                shieldGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+                ctx.fillStyle = shieldGrad;
+                ctx.beginPath();
+                ctx.ellipse(0, hipY - 18, 86 + pulse, 78 + pulse * 0.6, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(125, 211, 252, 0.85)';
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([10, 6]);
+                ctx.beginPath();
+                ctx.ellipse(0, hipY - 18, 78 + pulse * 0.5, 70 + pulse * 0.4, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
+            }
+
+            const drawDragonWing = (anchorX, anchorY, flapVal, scaleMul, isBackWing) => {
+                ctx.save();
+                ctx.translate(anchorX, anchorY);
+                ctx.scale(scaleMul, scaleMul);
+                ctx.rotate(-0.35 + flapVal * (isAirborne ? 0.55 : 0.22));
+
+                ctx.strokeStyle = isBackWing ? '#7f1d1d' : '#b91c1c';
+                ctx.lineWidth = 5.5;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-48, -58);
+                ctx.lineTo(-108, -36);
+                ctx.stroke();
+
+                const memGrad = ctx.createLinearGradient(-15, -55, -95, 35);
+                memGrad.addColorStop(0, isBackWing ? '#991b1b' : '#ea580c');
+                memGrad.addColorStop(0.55, isBackWing ? '#450a0a' : '#991b1b');
+                memGrad.addColorStop(1, '#18181b');
+                ctx.fillStyle = memGrad;
+                ctx.strokeStyle = '#fbbf24';
+                ctx.lineWidth = 1.6;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-48, -58);
+                ctx.lineTo(-108, -36);
+                ctx.quadraticCurveTo(-84, -8, -88, 16);
+                ctx.quadraticCurveTo(-58, 2, -52, 26);
+                ctx.quadraticCurveTo(-28, 10, -8, 22);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(-48, -58); ctx.lineTo(-88, 16);
+                ctx.moveTo(-48, -58); ctx.lineTo(-52, 26);
+                ctx.stroke();
+
+                ctx.fillStyle = '#fef08a';
+                ctx.beginPath();
+                ctx.moveTo(-46, -58); ctx.lineTo(-54, -72); ctx.lineTo(-40, -62);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+            };
+
+            drawDragonWing(shoulderCenterX - 14, shoulderCenterY - 8, wingFlap, 0.92, true);
+
+            const tailWave = Math.sin(t * 0.16) * 12;
+            ctx.strokeStyle = '#991b1b';
+            ctx.lineWidth = 15;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(hipX - 12, hipY - 4);
+            ctx.quadraticCurveTo(hipX - 58, hipY + 12 + tailWave * 0.5, hipX - 96, hipY - 18 + tailWave);
+            ctx.stroke();
+            ctx.strokeStyle = '#dc2626';
+            ctx.lineWidth = 10;
+            ctx.stroke();
+            ctx.fillStyle = '#fbbf24';
+            ctx.strokeStyle = '#450a0a';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            const tx = hipX - 96, ty = hipY - 18 + tailWave;
+            ctx.moveTo(tx, ty);
+            ctx.lineTo(tx - 18, ty - 9);
+            ctx.lineTo(tx - 12, ty);
+            ctx.lineTo(tx - 18, ty + 9);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            const drawDragonArm = (sx, sy, hx, hy, isFront) => {
+                const elbow = solveIK(sx, sy, hx, hy, 33, 33, 1, 'arm');
+                const scaleCol = isFront ? '#dc2626' : '#991b1b';
+                const borderCol = '#450a0a';
+                drawRoundedLimb(ctx, sx, sy, elbow.jx, elbow.jy, 14, 11.5, scaleCol, borderCol);
+                drawRoundedLimb(ctx, elbow.jx, elbow.jy, hx, hy, 11.5, 9.5, scaleCol, borderCol);
+                ctx.fillStyle = '#fef08a';
+                ctx.strokeStyle = '#78350f';
+                ctx.lineWidth = 1.2;
+                [-5, 0, 5].forEach(cy => {
+                    ctx.beginPath();
+                    ctx.moveTo(hx + 4, hy + cy - 2);
+                    ctx.lineTo(hx + 18, hy + cy + 2);
+                    ctx.lineTo(hx + 4, hy + cy + 3);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                });
+            };
+
+            drawDragonArm(shoulderCenterX - 14, shoulderCenterY + 5, lHandX, lHandY, false);
+
+            const lKnee = solveIK(hipX - 10, hipY, lFootX, lFootY, 44, 44, 1, 'leg');
+            const rKnee = solveIK(hipX + 10, hipY, rFootX, rFootY, 44, 44, 1, 'leg');
+            [
+                [hipX - 10, hipY, lKnee.jx, lKnee.jy, lFootX, lFootY, false],
+                [hipX + 10, hipY, rKnee.jx, rKnee.jy, rFootX, rFootY, true]
+            ].forEach(([hx, hy, kx, ky, fx, fy, isFront]) => {
+                const col = isFront ? '#b91c1c' : '#7f1d1d';
+                drawRoundedLimb(ctx, hx, hy, kx, ky, 16, 12.5, col, '#270505');
+                drawRoundedLimb(ctx, kx, ky, fx, fy, 12, 9, col, '#270505');
+                ctx.fillStyle = '#fef08a';
+                ctx.strokeStyle = '#450a0a';
+                ctx.lineWidth = 1.3;
+                ctx.beginPath();
+                ctx.moveTo(fx + 6, fy - 4); ctx.lineTo(fx + 22, fy + 2); ctx.lineTo(fx + 5, fy + 3);
+                ctx.moveTo(fx, fy - 3);     ctx.lineTo(fx + 15, fy + 4); ctx.lineTo(fx - 2, fy + 4);
+                ctx.fill();
+                ctx.stroke();
+            });
+
+            ctx.save();
+            ctx.translate(hipX, hipY);
+            ctx.rotate(torsoLean);
+
+            const bodyGrad = ctx.createLinearGradient(-26, -70, 26, 8);
+            bodyGrad.addColorStop(0, '#ef4444');
+            bodyGrad.addColorStop(0.55, '#b91c1c');
+            bodyGrad.addColorStop(1, '#450a0a');
+            ctx.fillStyle = bodyGrad;
+            ctx.strokeStyle = '#270505';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.roundRect(-25, -68, 52, 66, 14);
+            ctx.fill();
+            ctx.stroke();
+
+            const bellyGrad = ctx.createLinearGradient(0, -64, 24, -4);
+            bellyGrad.addColorStop(0, '#fef08a');
+            bellyGrad.addColorStop(0.5, '#f59e0b');
+            bellyGrad.addColorStop(1, '#b45309');
+            ctx.fillStyle = bellyGrad;
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.roundRect(0, -62, 24, 56, 8);
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            for (let by = -52; by <= -14; by += 9.5) {
+                ctx.moveTo(1, by); ctx.lineTo(23, by);
+            }
+            ctx.stroke();
+
+            drawRoundedLimb(ctx, 4, -62, 16, -82, 15, 13, '#b91c1c', '#450a0a');
+            drawDragonHead(ctx, 18, -74, 1.04, this.state === 'hit', jawOpen);
+            ctx.restore();
+
+            drawDragonWing(shoulderCenterX - 4, shoulderCenterY - 2, wingFlap, 1.06, false);
+            drawDragonArm(shoulderCenterX + 12, shoulderCenterY + 5, rHandX, rHandY, true);
+
+            if (showClawSlash && this.attackFrame >= 3 && this.attackFrame <= 11) {
+                ctx.strokeStyle = 'rgba(251, 146, 60, 0.9)';
+                ctx.lineWidth = 4.5;
+                [-10, 0, 10].forEach(offsetY => {
+                    ctx.beginPath();
+                    ctx.arc(shoulderCenterX + 36, shoulderCenterY + offsetY, 54, -0.55, 0.55);
+                    ctx.stroke();
+                });
+            }
+
+            if (showCrunchBite && this.attackFrame >= 6 && this.attackFrame <= 17) {
+                const f = this.attackFrame;
+                const biteClamp = f >= 9 ? 0.08 : 0.85;
+                const bx = shoulderCenterX + 76;
+                const by = shoulderCenterY - 18;
+                ctx.save();
+                ctx.strokeStyle = '#fef08a';
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.85)';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(bx - 32, by - 14 - biteClamp * 28);
+                for (let i = 0; i < 5; i++) {
+                    ctx.lineTo(bx - 24 + i * 12, by + 4 - biteClamp * 22);
+                    ctx.lineTo(bx - 18 + i * 12, by - 14 - biteClamp * 28);
+                }
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(bx - 32, by + 14 + biteClamp * 28);
+                for (let i = 0; i < 5; i++) {
+                    ctx.lineTo(bx - 24 + i * 12, by - 4 + biteClamp * 22);
+                    ctx.lineTo(bx - 18 + i * 12, by + 14 + biteClamp * 28);
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            if (showFireBreath) {
+                const f = this.attackFrame;
+                const mouthX = hipX + sinT * 78 + 38;
+                const mouthY = hipY - cosT * 78 - 16;
+                const reach = this.attackType === 'super' ? 235 : Math.min(205, (f - 10) * 24);
+
+                ctx.save();
+                const fireGrad = ctx.createLinearGradient(mouthX, mouthY, mouthX + reach, mouthY + 12);
+                fireGrad.addColorStop(0, '#ffffff');
+                fireGrad.addColorStop(0.2, '#fef08a');
+                fireGrad.addColorStop(0.55, '#f97316');
+                fireGrad.addColorStop(0.85, '#dc2626');
+                fireGrad.addColorStop(1, 'rgba(127, 29, 29, 0.1)');
+                ctx.fillStyle = fireGrad;
+                ctx.beginPath();
+                ctx.moveTo(mouthX, mouthY - 6);
+                ctx.lineTo(mouthX + reach, mouthY - 44 - Math.sin(t * 0.8) * 10);
+                ctx.arc(mouthX + reach, mouthY + 6, 46, -Math.PI * 0.5, Math.PI * 0.5);
+                ctx.lineTo(mouthX, mouthY + 8);
+                ctx.closePath();
+                ctx.fill();
+
+                for (let i = 0; i < 8; i++) {
+                    const prog = ((f * 15 + i * 19) % 100) / 100;
+                    const fx = mouthX + 18 + prog * (reach - 15);
+                    const fy = mouthY + Math.sin(f * 0.7 + i * 1.5) * (8 + prog * 26);
+                    const rad = 6 + (i % 3) * 5;
+                    ctx.fillStyle = (i % 2 === 0) ? 'rgba(254, 240, 138, 0.92)' : 'rgba(249, 115, 22, 0.85)';
+                    ctx.beginPath();
+                    ctx.arc(fx, fy, rad, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            ctx.restore();
+
+            if (this.flightFuel < this.maxFlightFuel || isAirborne) {
+                ctx.save();
+                ctx.scale(this.facing, 1);
+                const barW = 74, barH = 6;
+                const barY = -225;
+                ctx.fillStyle = 'rgba(9, 10, 15, 0.85)';
+                ctx.strokeStyle = this.isFlying ? '#38bdf8' : '#fb923c';
+                ctx.lineWidth = 1.4;
+                ctx.fillRect(-barW / 2, barY, barW, barH);
+                ctx.strokeRect(-barW / 2, barY, barW, barH);
+                const fillW = (this.flightFuel / this.maxFlightFuel) * barW;
+                ctx.fillStyle = this.isFlying ? '#38bdf8' : '#fbbf24';
+                ctx.fillRect(-barW / 2, barY, fillW, barH);
+                ctx.font = '900 9px "Black Ops One", "Noto Sans JP", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = this.isFlying ? '#7dd3fc' : '#fed7aa';
+                ctx.fillText(this.isFlying ? '🪽 FLIGHT (無敵)' : '🪽 FLIGHT', 0, barY - 3);
+                ctx.restore();
+            }
+        }
+
         // BACTERIA (バクテリア): Non-Humanoid Multiplying Bacteria & Virus Colony with Extending Bio-Tentacles & Life-Drain
         drawBacteria(ctx) {
             const t = this.animTime;
