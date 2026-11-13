@@ -8737,7 +8737,102 @@ window.addEventListener('DOMContentLoaded', () => {
         gameLoop();
     });
     </script>
-<!-- ==================== 🔥 全20キャラ拡張＆5大仕様改善パッチ（見た目・技・音100%維持版） ==================== -->
+<!-- ==================== 🔥 全30キャラ完全版＆スマホ横向き最適化＆6大バランス改修パッチ【前半 1/2】 ==================== -->
+<style>
+/* 📱 スマホ縦向き・横向き両対応：戦闘画面を大きく＆操作パネルをスリムに最適化 */
+#controller-deck {
+    height: 122px !important;
+    padding: 4px 12px !important;
+    transition: height 0.15s ease;
+}
+#controller-deck > div:first-child {
+    width: 112px !important;
+    height: 112px !important;
+}
+#controller-deck #btn-up,
+#controller-deck #btn-down {
+    width: 38px !important;
+    height: 35px !important;
+}
+#controller-deck #btn-left,
+#controller-deck #btn-right {
+    width: 36px !important;
+    height: 38px !important;
+}
+#controller-deck > div:last-child {
+    width: 196px !important;
+    gap: 6px !important;
+}
+#controller-deck .arcade-btn {
+    height: 50px !important;
+    border-radius: 12px !important;
+}
+
+/* 📱 スマホ横向き（ランドスケープ）時の劇的ワイド戦闘画面モード */
+@media (orientation: landscape) and (max-height: 560px) {
+    #controller-deck {
+        height: 76px !important;
+        padding: 2px 14px !important;
+        border-top-width: 1px !important;
+    }
+    /* 十字キーを超コンパクト＆押しやすく配置 */
+    #controller-deck > div:first-child {
+        width: 72px !important;
+        height: 70px !important;
+    }
+    #controller-deck #btn-up,
+    #controller-deck #btn-down {
+        width: 26px !important;
+        height: 23px !important;
+        border-radius: 6px !important;
+    }
+    #controller-deck #btn-up span:last-child,
+    #controller-deck #btn-down span:first-child {
+        display: none !important;
+    }
+    #controller-deck #btn-left,
+    #controller-deck #btn-right {
+        width: 24px !important;
+        height: 26px !important;
+        border-radius: 6px !important;
+    }
+    #controller-deck > div:first-child > div {
+        width: 20px !important;
+        height: 20px !important;
+        font-size: 6px !important;
+    }
+    /* 中央ガイドは横向き時は非表示にして左右の操作スペースを確保 */
+    #controller-deck > div.hidden.md\:flex {
+        display: none !important;
+    }
+    /* 右側4つの技ボタンを横向きスリム2×2（またはワイド）に圧縮 */
+    #controller-deck > div:last-child {
+        width: 230px !important;
+        gap: 4px !important;
+    }
+    #controller-deck .arcade-btn {
+        height: 33px !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 0 rgba(0,0,0,0.65), inset 0 1px 2px rgba(255,255,255,0.3) !important;
+    }
+    #controller-deck .arcade-btn span:first-of-type {
+        font-size: 12px !important;
+    }
+    #controller-deck .arcade-btn span:last-of-type {
+        font-size: 8px !important;
+        margin-top: 0 !important;
+    }
+    /* 横向き時のキャラ選択画面・タイトル画面の省スペース化 */
+    #char-select-screen {
+        padding-top: 32px !important;
+        padding-bottom: 4px !important;
+    }
+    #title-screen {
+        padding-top: 28px !important;
+        padding-bottom: 6px !important;
+    }
+}
+</style>
 <script>
 (function() {
     if (window.__ALL_20_CHARS_PATCH_LOADED__) return;
@@ -8745,87 +8840,152 @@ window.addEventListener('DOMContentLoaded', () => {
 
     var MAX_UPG_LV = 20;
 
-    // 1. 追加キャラクター7体（ファントム＋新5体＋ヴィーナス）の登録
-    var NEW_CHAR_LIST = ['phantom', 'chronos', 'pulserobo', 'vending', 'doppel', 'gigapump', 'venus'];
-    NEW_CHAR_LIST.forEach(function(id) {
-        if (!ALL_CHAR_IDS.includes(id)) ALL_CHAR_IDS.push(id);
+    // 1. 全30キャラクターの登録（成金院長の次〜暴走自販機の前までをスキル・強さ順に編成、天体ボス3体を末尾に配置）
+    var ORDERED_ALL_30_CHARS = [
+        'ryuji', 'takeshi', 'sayuri', 'hanako', 'keita',
+        'ume', 'tyrant', 'gallo', 'incho',
+        'gensan', 'baby', 'kraken', 'drskull', 'totonoi',
+        'stretcher', 'bacteria', 'roentgen', 'traffic', 'slotjack',
+        'pulserobo', 'phantom', 'doppel', 'gigapump', 'dragon',
+        'chronos', 'vending', 'maou', 'venus', 'abyss', 'helios'
+    ];
+    ALL_CHAR_IDS.length = 0;
+    ORDERED_ALL_30_CHARS.forEach(function(id) {
+        ALL_CHAR_IDS.push(id);
     });
 
-    // チャレンジモードの魔王ラセツの前に6体（S12〜S17）を挿入（魔王ラセツがS18 BOSS）
-    var CHALLENGE_NEW_STAGES = [
-        { id: 'phantom',   hp: 1880, atkMult: 1.54, aiRate: 0.74, recLv: 12 },
-        { id: 'chronos',   hp: 1960, atkMult: 1.58, aiRate: 0.75, recLv: 13 },
-        { id: 'pulserobo', hp: 1850, atkMult: 1.55, aiRate: 0.76, recLv: 14 },
-        { id: 'vending',   hp: 2040, atkMult: 1.62, aiRate: 0.77, recLv: 15 },
-        { id: 'doppel',    hp: 1980, atkMult: 1.60, aiRate: 0.78, recLv: 16 },
-        { id: 'gigapump',  hp: 2120, atkMult: 1.65, aiRate: 0.79, recLv: 17 }
+    var NEW_CHAR_LIST = [
+        'gensan', 'kraken', 'drskull', 'totonoi', 'stretcher',
+        'roentgen', 'traffic', 'slotjack', 'pulserobo', 'phantom',
+        'doppel', 'gigapump', 'chronos', 'vending',
+        'venus', 'abyss', 'helios'
     ];
 
-    CHALLENGE_NEW_STAGES.forEach(function(st) {
-        if (!CHALLENGE_LADDER.includes(st.id)) {
-            var mIdx = CHALLENGE_LADDER.indexOf('maou');
-            if (mIdx !== -1) {
-                CHALLENGE_LADDER.splice(mIdx, 0, st.id);
-                CHALLENGE_STAGE_SCALING.splice(mIdx, 0, { hp: st.hp, atkMult: st.atkMult, aiRate: st.aiRate, recLv: st.recLv });
-            } else {
-                CHALLENGE_LADDER.push(st.id);
-                CHALLENGE_STAGE_SCALING.push({ hp: st.hp, atkMult: st.atkMult, aiRate: st.aiRate, recLv: st.recLv });
-            }
-        }
+    // チャレンジモード全26ステージの対戦順序（S1:B-PAN 〜 S25:暴走自販機 ➔ S26 BOSS:魔王ラセツ）
+    var ORDERED_CHALLENGE_LADDER = [
+        'takeshi',   // S1: B-PAN
+        'sayuri',    // S2: SAYURI
+        'hanako',    // S3: HANAKO
+        'keita',     // S4: ギャンブル兄やん
+        'ume',       // S5: ウメ婆
+        'tyrant',    // S6: タイラント
+        'gallo',     // S7: Chickenleg
+        'incho',     // S8: 成金院長
+        'gensan',    // S9: 鉄鍋の源さん（激辛ラー油スリップ床＆炎の中華鍋フランベ）
+        'baby',      // S10: ベイビーゾンビ（高速凶器乱舞）
+        'kraken',    // S11: ダスト・クラーケン（ドラム缶装甲＆イカスミ煙幕デバフ）
+        'drskull',   // S12: Dr.スカル（しゃがみ骨分離極小化＆頭蓋骨・肋骨ブーメラン）
+        'totonoi',   // S13: トトノイ親方（ロウリュ熱波蓄積＆水風呂ととのい気絶）
+        'stretcher', // S14: 零号室（拘束ベルト＆画面端強制搬送壁クラッシュ）
+        'bacteria',  // S15: バクテリア（常時自然治癒＆ウイルス感染封印・反転）
+        'roentgen',  // S16: Dr.レントゲン（X線フラッシュ骨格透視＆防御35%低下）
+        'traffic',   // S17: トラフィック（青・黄・赤3色信号＆赤信号無視カウンター雷撃）
+        'slotjack',  // S18: スロット・ジャック（3連リール抽選＆777フィーバー）
+        'pulserobo', // S19: パルス・ロボ（超磁力吸引＆360J自動蘇生）
+        'phantom',   // S20: ファントム（HP50%以下で完全透明化ステルス）
+        'doppel',    // S21: ドッペル（影分身による時間差2連撃＆背後ワープ）
+        'gigapump',  // S22: ギガ・パンプ（被弾で最大1.85倍巨大化＆スーパーアーマー）
+        'dragon',    // S23: ドラゴン（空中飛行無敵＆灼熱ブレス）
+        'chronos',   // S24: クロノス（黄金大振り子＆2.5秒間タイムストップ）
+        'vending',   // S25: 暴走自販機（氷結缶フリーズ＆灼熱缶火傷＆800kgプレス）
+        'maou'       // S26 (BOSS): 魔王ラセツ
+    ];
+    CHALLENGE_LADDER.length = 0;
+    ORDERED_CHALLENGE_LADDER.forEach(function(id) {
+        CHALLENGE_LADDER.push(id);
     });
 
-    // ★ベイビーゾンビ(S9)以降の急激な難易度上昇をマイルドに調整（Lv.20強化に合わせてバランス最適化）
+    // 全26ステージの段階的ステータススケーリング（Lv.20強化に合わせて調整）
     var BALANCED_STAGE_SCALING = [
         { hp: 1000, atkMult: 1.00, aiRate: 0.42, recLv: 1 },  // S1: B-PAN
-        { hp: 1080, atkMult: 1.06, aiRate: 0.46, recLv: 2 },  // S2: SAYURI
-        { hp: 1160, atkMult: 1.12, aiRate: 0.50, recLv: 3 },  // S3: HANAKO
-        { hp: 1250, atkMult: 1.18, aiRate: 0.54, recLv: 4 },  // S4: ギャンブル兄やん
-        { hp: 1340, atkMult: 1.24, aiRate: 0.58, recLv: 5 },  // S5: ウメ婆
-        { hp: 1440, atkMult: 1.30, aiRate: 0.62, recLv: 6 },  // S6: タイラント
-        { hp: 1540, atkMult: 1.36, aiRate: 0.65, recLv: 7 },  // S7: Chickenleg
-        { hp: 1650, atkMult: 1.42, aiRate: 0.68, recLv: 8 },  // S8: 成金院長
-        { hp: 1720, atkMult: 1.46, aiRate: 0.70, recLv: 9 },  // S9: ベイビーゾンビ（大幅緩和）
-        { hp: 1800, atkMult: 1.50, aiRate: 0.72, recLv: 10 }, // S10: ドラゴン
-        { hp: 1780, atkMult: 1.22, aiRate: 0.73, recLv: 11 }, // S11: バクテリア
-        { hp: 1880, atkMult: 1.54, aiRate: 0.74, recLv: 12 }, // S12: ファントム
-        { hp: 1960, atkMult: 1.58, aiRate: 0.75, recLv: 13 }, // S13: クロノス
-        { hp: 1850, atkMult: 1.55, aiRate: 0.76, recLv: 14 }, // S14: パルス・ロボ
-        { hp: 2040, atkMult: 1.62, aiRate: 0.77, recLv: 15 }, // S15: 暴走自販機
-        { hp: 1980, atkMult: 1.60, aiRate: 0.78, recLv: 16 }, // S16: ドッペル
-        { hp: 2120, atkMult: 1.65, aiRate: 0.79, recLv: 17 }, // S17: ギガ・パンプ
-        { hp: 2350, atkMult: 1.75, aiRate: 0.82, recLv: 18 }  // S18: 魔王ラセツ
+        { hp: 1070, atkMult: 1.05, aiRate: 0.45, recLv: 2 },  // S2: SAYURI
+        { hp: 1140, atkMult: 1.10, aiRate: 0.48, recLv: 3 },  // S3: HANAKO
+        { hp: 1220, atkMult: 1.15, aiRate: 0.52, recLv: 4 },  // S4: ギャンブル兄やん
+        { hp: 1300, atkMult: 1.20, aiRate: 0.55, recLv: 5 },  // S5: ウメ婆
+        { hp: 1380, atkMult: 1.25, aiRate: 0.58, recLv: 6 },  // S6: タイラント
+        { hp: 1470, atkMult: 1.30, aiRate: 0.61, recLv: 7 },  // S7: Chickenleg
+        { hp: 1560, atkMult: 1.35, aiRate: 0.64, recLv: 8 },  // S8: 成金院長
+        { hp: 1620, atkMult: 1.38, aiRate: 0.66, recLv: 9 },  // S9: 鉄鍋の源さん
+        { hp: 1680, atkMult: 1.41, aiRate: 0.68, recLv: 10 }, // S10: ベイビーゾンビ
+        { hp: 1740, atkMult: 1.44, aiRate: 0.69, recLv: 10 }, // S11: ダスト・クラーケン
+        { hp: 1790, atkMult: 1.47, aiRate: 0.70, recLv: 11 }, // S12: Dr.スカル
+        { hp: 1850, atkMult: 1.50, aiRate: 0.71, recLv: 12 }, // S13: トトノイ親方
+        { hp: 1900, atkMult: 1.52, aiRate: 0.72, recLv: 12 }, // S14: 零号室
+        { hp: 1860, atkMult: 1.25, aiRate: 0.73, recLv: 13 }, // S15: バクテリア
+        { hp: 1960, atkMult: 1.55, aiRate: 0.74, recLv: 14 }, // S16: Dr.レントゲン
+        { hp: 2020, atkMult: 1.58, aiRate: 0.75, recLv: 14 }, // S17: トラフィック
+        { hp: 2080, atkMult: 1.60, aiRate: 0.76, recLv: 15 }, // S18: スロット・ジャック
+        { hp: 2000, atkMult: 1.58, aiRate: 0.76, recLv: 16 }, // S19: パルス・ロボ
+        { hp: 2140, atkMult: 1.62, aiRate: 0.77, recLv: 16 }, // S20: ファントム
+        { hp: 2200, atkMult: 1.65, aiRate: 0.78, recLv: 17 }, // S21: ドッペル
+        { hp: 2260, atkMult: 1.68, aiRate: 0.79, recLv: 18 }, // S22: ギガ・パンプ
+        { hp: 2320, atkMult: 1.71, aiRate: 0.80, recLv: 18 }, // S23: ドラゴン
+        { hp: 2380, atkMult: 1.74, aiRate: 0.81, recLv: 19 }, // S24: クロノス
+        { hp: 2450, atkMult: 1.78, aiRate: 0.82, recLv: 20 }, // S25: 暴走自販機
+        { hp: 2650, atkMult: 1.86, aiRate: 0.85, recLv: 20 }  // S26: 魔王ラセツ
     ];
-    for (var sIdx = 0; sIdx < CHALLENGE_STAGE_SCALING.length && sIdx < BALANCED_STAGE_SCALING.length; sIdx++) {
-        CHALLENGE_STAGE_SCALING[sIdx] = BALANCED_STAGE_SCALING[sIdx];
-    }
+    CHALLENGE_STAGE_SCALING.length = 0;
+    BALANCED_STAGE_SCALING.forEach(function(st) {
+        CHALLENGE_STAGE_SCALING.push(st);
+    });
 
+    CHAR_DISPLAY_NAMES.gensan    = '鉄鍋の源さん';
+    CHAR_DISPLAY_NAMES.kraken    = 'ダスト・クラーケン';
+    CHAR_DISPLAY_NAMES.drskull   = 'Dr.スカル';
+    CHAR_DISPLAY_NAMES.totonoi   = 'トトノイ親方';
+    CHAR_DISPLAY_NAMES.stretcher = '零号室';
+    CHAR_DISPLAY_NAMES.roentgen  = 'Dr.レントゲン';
+    CHAR_DISPLAY_NAMES.traffic   = 'トラフィック';
+    CHAR_DISPLAY_NAMES.slotjack  = 'スロット・ジャック';
     CHAR_DISPLAY_NAMES.phantom   = 'ファントム';
     CHAR_DISPLAY_NAMES.chronos   = 'クロノス';
     CHAR_DISPLAY_NAMES.pulserobo = 'パルス・ロボ';
-    CHAR_DISPLAY_NAMES.vending   = '暴走自販機';
     CHAR_DISPLAY_NAMES.doppel    = 'ドッペル';
     CHAR_DISPLAY_NAMES.gigapump  = 'ギガ・パンプ';
+    CHAR_DISPLAY_NAMES.vending   = '暴走自販機';
     CHAR_DISPLAY_NAMES.venus     = 'ヴィーナス';
+    CHAR_DISPLAY_NAMES.abyss     = 'アビス';
+    CHAR_DISPLAY_NAMES.helios    = 'ヘリオス';
 
-    CHAR_CARD_META.phantom   = { role: '👻 透明怪異', name: 'ファントム',   desc: 'HP半減で透明化',     color: 'text-yellow-200' };
-    CHAR_CARD_META.chronos   = { role: '🕰️ 古時計',   name: 'クロノス',     desc: '時間停止・振り子',   color: 'text-amber-300' };
-    CHAR_CARD_META.pulserobo = { role: '🤖 医療メカ', name: 'パルス・ロボ', desc: '自動蘇生・超磁力',   color: 'text-teal-300' };
-    CHAR_CARD_META.vending   = { role: '🥫 自販機怪獣',name: '暴走自販機',   desc: '氷結缶＆灼熱缶',     color: 'text-rose-400' };
-    CHAR_CARD_META.doppel    = { role: '🃏 影道化師', name: 'ドッペル',     desc: '影分身2連撃',       color: 'text-purple-300' };
-    CHAR_CARD_META.gigapump  = { role: '💪 超ビルダー',name: 'ギガ・パンプ', desc: '被弾で巨大化',       color: 'text-orange-300' };
-    CHAR_CARD_META.venus     = { role: '🪐 金星',     name: 'ヴィーナス',   desc: '酸性蒸気・惑星爆発', color: 'text-amber-300' };
+    CHAR_CARD_META.gensan    = { role: '🍜 屋台大将', name: '鉄鍋の源さん',       desc: 'ラー油床・中華鍋',   color: 'text-orange-400' };
+    CHAR_CARD_META.kraken    = { role: '🗑️ 廃缶タコ', name: 'ダスト・クラーケン', desc: '缶装甲・イカスミ',   color: 'text-pink-400' };
+    CHAR_CARD_META.drskull   = { role: '🦴 人体模型', name: 'Dr.スカル',          desc: '骨分離・肋骨飛刃',   color: 'text-zinc-200' };
+    CHAR_CARD_META.totonoi   = { role: '🧖‍♂️ 熱波師',   name: 'トトノイ親方',       desc: '熱波蓄積・水風呂',   color: 'text-amber-400' };
+    CHAR_CARD_META.stretcher = { role: '🛏️ 呪搬送台', name: '零号室',             desc: '強制搬送・壁激突',   color: 'text-sky-300' };
+    CHAR_CARD_META.roentgen  = { role: '🩻 放射線医', name: 'Dr.レントゲン',      desc: 'X線透視・防御弱体',  color: 'text-cyan-300' };
+    CHAR_CARD_META.traffic   = { role: '🚦 信号怪人', name: 'トラフィック',       desc: '3色信号・赤雷撃',    color: 'text-emerald-300' };
+    CHAR_CARD_META.slotjack  = { role: '🎰 カジノ機', name: 'スロット・ジャック', desc: 'リール抽選・777',    color: 'text-yellow-300' };
+    CHAR_CARD_META.phantom   = { role: '👻 透明怪異', name: 'ファントム',         desc: 'HP半減で透明化',     color: 'text-yellow-200' };
+    CHAR_CARD_META.chronos   = { role: '🕰️ 古時計',   name: 'クロノス',           desc: '時間停止・振り子',   color: 'text-amber-300' };
+    CHAR_CARD_META.pulserobo = { role: '🤖 医療メカ', name: 'パルス・ロボ',       desc: '自動蘇生・超磁力',   color: 'text-teal-300' };
+    CHAR_CARD_META.doppel    = { role: '🃏 影道化師', name: 'ドッペル',           desc: '影分身2連撃',       color: 'text-purple-300' };
+    CHAR_CARD_META.gigapump  = { role: '💪 超ビルダー',name: 'ギガ・パンプ',       desc: '被弾で巨大化',       color: 'text-orange-300' };
+    CHAR_CARD_META.vending   = { role: '🥫 自販機怪獣',name: '暴走自販機',         desc: '氷結缶＆灼熱缶',     color: 'text-rose-400' };
+    CHAR_CARD_META.venus     = { role: '🪐 金星',     name: 'ヴィーナス',         desc: '酸性蒸気・惑星爆発', color: 'text-amber-300' };
+    CHAR_CARD_META.abyss     = { role: '🕳️ 暗黒天体', name: 'アビス',             desc: '重力吸引・無重力',   color: 'text-fuchsia-400' };
+    CHAR_CARD_META.helios    = { role: '☀️ 恒星太陽', name: 'ヘリオス',           desc: 'コロナ熱・超新星',   color: 'text-yellow-300' };
 
-    CHAR_MOVE_BUTTON_LABELS.phantom   = { light: '霊波パルス',       heavy: '真空・大波動刃',     special: '衝撃波動ブレイク' };
-    CHAR_MOVE_BUTTON_LABELS.chronos   = { light: '秒針レイピア突き', heavy: '大振り子ギロチン',   special: '時止め・12時の鐘' };
-    CHAR_MOVE_BUTTON_LABELS.pulserobo = { light: 'スタンパドル連打', heavy: '磁力吸引＆高圧電撃', special: '360J除細動ショック' };
-    CHAR_MOVE_BUTTON_LABELS.vending   = { light: '空き缶マシンガン', heavy: '氷結＆灼熱缶発射',   special: '800kg自販機プレス' };
-    CHAR_MOVE_BUTTON_LABELS.doppel    = { light: 'トランプ2連射',   heavy: 'パントマイム壁粉砕', special: '瞬間移動・影奇襲' };
-    CHAR_MOVE_BUTTON_LABELS.gigapump  = { light: 'バイセップス衝撃', heavy: 'シェイカー＆剛腕',   special: '覇気ボディプレス' };
-    CHAR_MOVE_BUTTON_LABELS.venus     = { light: '超重力・体当たり', heavy: '酸性蒸気＆衝撃波',   special: '惑星落下＆時間差爆発' };
+    CHAR_MOVE_BUTTON_LABELS.gensan    = { light: 'おたま＆熱湯浴びせ', heavy: '赤熱中華鍋スイング', special: '激辛ラー油＆大フランベ' };
+    CHAR_MOVE_BUTTON_LABELS.kraken    = { light: 'タコ触手ウィップ',   heavy: 'ドラム缶スピン強打', special: 'イカスミ煙幕ブレス' };
+    CHAR_MOVE_BUTTON_LABELS.drskull   = { light: '頭蓋骨ヘッドショット',heavy: '大腿骨ボーン強打',   special: '肋骨ブーメラン挟撃' };
+    CHAR_MOVE_BUTTON_LABELS.totonoi   = { light: '熱波タオル旋風',     heavy: '灼熱ロウリュ蒸気波', special: '極冷・水風呂ぶっかけ' };
+    CHAR_MOVE_BUTTON_LABELS.stretcher = { light: '車輪スピンひき逃げ', heavy: 'サイド柵ギロチン',   special: '拘束ベルト・強制搬送' };
+    CHAR_MOVE_BUTTON_LABELS.roentgen  = { light: '鉛フィルム盾バッシュ',heavy: '高電圧X線パルス砲',  special: '全身透視レントゲン照射' };
+    CHAR_MOVE_BUTTON_LABELS.traffic   = { light: '止まれ標識突き',     heavy: 'ガードレール粉砕',   special: '赤信号・違反雷撃処刑' };
+    CHAR_MOVE_BUTTON_LABELS.slotjack  = { light: 'メダルマシンガン',   heavy: '巨大レバー強打抽選', special: '777フィーバー大放出' };
+    CHAR_MOVE_BUTTON_LABELS.phantom   = { light: '霊波パルス',         heavy: '真空・大波動刃',     special: '衝撃波動ブレイク' };
+    CHAR_MOVE_BUTTON_LABELS.chronos   = { light: '秒針レイピア突き',   heavy: '大振り子ギロチン',   special: '時止め・12時の鐘' };
+    CHAR_MOVE_BUTTON_LABELS.pulserobo = { light: 'スタンパドル連打',   heavy: '磁力吸引＆高圧電撃', special: '360J除細動ショック' };
+    CHAR_MOVE_BUTTON_LABELS.doppel    = { light: 'トランプ2連射',     heavy: 'パントマイム壁粉砕', special: '瞬間移動・影奇襲' };
+    CHAR_MOVE_BUTTON_LABELS.gigapump  = { light: 'バイセップス衝撃',   heavy: 'シェイカー＆剛腕',   special: '覇気ボディプレス' };
+    CHAR_MOVE_BUTTON_LABELS.vending   = { light: '空き缶マシンガン',   heavy: '氷結＆灼熱缶発射',   special: '800kg自販機プレス' };
+    CHAR_MOVE_BUTTON_LABELS.venus     = { light: '超重力・体当たり',   heavy: '酸性蒸気＆衝撃波',   special: '惑星落下＆時間差爆発' };
+    CHAR_MOVE_BUTTON_LABELS.abyss     = { light: '事象の地平線パルス', heavy: '空間歪曲・重力圧殺', special: 'ゼロ・グラビティ浮遊' };
+    CHAR_MOVE_BUTTON_LABELS.helios    = { light: 'コロナフレア放射',   heavy: '太陽風プラズマ衝撃', special: '超新星プロミネンス爆発' };
 
-    // ★チャレンジモードでは難易度制限をなくし、勝利すれば無条件でそのステージのキャラが解放されるよう全員 1 に設定
+    cpuDifficulty = 'normal';
     ALL_CHAR_IDS.forEach(function(id) {
-        if (id !== 'maou' && id !== 'venus') {
+        if (id !== 'maou' && id !== 'venus' && id !== 'abyss' && id !== 'helios') {
             CHAR_UNLOCK_REQ_DIFF[id] = 1;
         }
     });
@@ -8839,7 +8999,6 @@ window.addEventListener('DOMContentLoaded', () => {
         if (typeof challengeStageBestDiff[idx] !== 'number') challengeStageBestDiff[idx] = 0;
     });
 
-    // ★闘気オーラの解放条件を「サバイバル連勝記録（3 / 5 / 10 / 15 / 20連勝）」に変更
     var AURA_REQ_STREAK_MAP = {
         none: 0,
         blue: 3,
@@ -8855,13 +9014,15 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 実績トロフィーの表記を全20キャラ＆Lv.20対応に更新
+    // ★実績トロフィーの更新＆新実績5種（20/30/40/50連勝＆全26ステージ制覇）の追加
     TROPHY_LIST.forEach(function(t) {
         if (t.id === 'all_unlock') {
-            t.desc = '全20キャラクターを解放する';
+            t.desc = '全30キャラクターを解放する';
+            t.bp = 1000;
         }
         if (t.id === 'max_stat') {
             t.desc = 'いずれかの強化項目をLv.20にする';
+            t.bp = 600;
             t.check = function() {
                 return ALL_CHAR_IDS.some(function(id) {
                     var u = charUpgrades[id] || { atk: 1, hp: 1, mtr: 1 };
@@ -8871,53 +9032,161 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 2. キャラ選択カード・チャレンジステージバー・技表・道場UIの動的生成
+    var EXTRA_TROPHIES = [
+        { id: 'chal_all_26', icon: '🏆', name: '路地裏の完全覇者', titleReward: '全26ステージ制覇王', bp: 1000, desc: 'チャレンジモード全26ステージを制覇する', check: function() { return !!challengeBossCleared; } },
+        { id: 'surv_20',     icon: '👹', name: 'サバイバル20連勝', titleReward: '魔王を統べる者',     bp: 600,  desc: 'サバイバルで20連勝を達成する',         check: function() { return bestSurvivalStreak >= 20; } },
+        { id: 'surv_30',     icon: '🪐', name: 'サバイバル30連勝', titleReward: '金星を砕く拳',       bp: 900,  desc: 'サバイバルで30連勝を達成する',         check: function() { return bestSurvivalStreak >= 30; } },
+        { id: 'surv_40',     icon: '🕳️', name: 'サバイバル40連勝', titleReward: '事象の地平線の覇者', bp: 1400, desc: 'サバイバルで40連勝を達成する',         check: function() { return bestSurvivalStreak >= 40; } },
+        { id: 'surv_50',     icon: '☀️', name: 'サバイバル50連勝', titleReward: '太陽神ヘリオス超越者',bp: 2000, desc: 'サバイバルで50連勝を達成する',         check: function() { return bestSurvivalStreak >= 50; } }
+    ];
+    EXTRA_TROPHIES.forEach(function(et) {
+        if (!TROPHY_LIST.some(function(t) { return t.id === et.id; })) {
+            TROPHY_LIST.push(et);
+        }
+    });
+
+    // =========================================================================
+    // 2. 暗証番号システム（①キャラ全解放 ＆ ②1,000,000 BP追加）※番号の画面表記なし
+    // =========================================================================
+    var currentSecretMode = 'unlock';
+
+    function updateSecretModeUI() {
+        var tabUnlock = document.getElementById('secret-tab-unlock');
+        var tabBp = document.getElementById('secret-tab-bp');
+        var descEl = document.getElementById('secret-code-desc-text');
+        if (tabUnlock && tabBp) {
+            if (currentSecretMode === 'unlock') {
+                tabUnlock.className = 'py-1.5 px-2 rounded-lg font-black text-[11px] bg-amber-500 text-black shadow cursor-pointer';
+                tabBp.className = 'py-1.5 px-2 rounded-lg font-bold text-[11px] bg-zinc-800 text-zinc-300 hover:bg-zinc-700 cursor-pointer';
+            } else {
+                tabUnlock.className = 'py-1.5 px-2 rounded-lg font-bold text-[11px] bg-zinc-800 text-zinc-300 hover:bg-zinc-700 cursor-pointer';
+                tabBp.className = 'py-1.5 px-2 rounded-lg font-black text-[11px] bg-amber-500 text-black shadow cursor-pointer';
+            }
+        }
+        if (descEl) {
+            descEl.textContent = currentSecretMode === 'unlock'
+                ? '【キャラ全解放】暗証番号を入力してください'
+                : '【+1,000,000 BP追加】暗証番号を入力してください';
+        }
+    }
+
+    window.switchSecretCodeMode = function(mode) {
+        sfx.init(); sfx.block();
+        currentSecretMode = (mode === 'bp') ? 'bp' : 'unlock';
+        secretInputBuffer = '';
+        updateSecretDisplay();
+        var msg = document.getElementById('secret-code-msg');
+        if (msg) msg.textContent = '';
+        updateSecretModeUI();
+    };
+
+    window.openSecretCodeModal = function(mode) {
+        sfx.init(); sfx.block();
+        currentSecretMode = (mode === 'bp') ? 'bp' : 'unlock';
+        secretInputBuffer = '';
+        updateSecretDisplay();
+        var msg = document.getElementById('secret-code-msg');
+        if (msg) msg.textContent = '';
+        updateSecretModeUI();
+        document.getElementById('secret-code-modal').classList.remove('hidden');
+    };
+
+    window.submitSecretCode = function() {
+        var msg = document.getElementById('secret-code-msg');
+        if (secretInputBuffer.length === 4 && computeCodeDigest(secretInputBuffer) === SECRET_HASH_TARGET) {
+            if (currentSecretMode === 'bp') {
+                brawlPoints += 1000000;
+                sfx.init();
+                sfx.superFlash();
+                updateBPDisplays();
+                saveGameProgress();
+                if (msg) {
+                    msg.textContent = '💰 +1,000,000 BP 追加完了！！';
+                    msg.className = 'text-[11px] font-black h-4 text-amber-300';
+                }
+            } else {
+                unlockAllCharactersBySecret();
+                if (msg) {
+                    msg.textContent = '🔓 全30キャラクター解放完了！！';
+                    msg.className = 'text-[11px] font-black h-4 text-emerald-400';
+                }
+            }
+            secretInputBuffer = '';
+            updateSecretDisplay();
+            setTimeout(function() { closeSecretCodeModal(); }, 950);
+        } else {
+            sfx.init(); sfx.hitLight();
+            if (msg) {
+                msg.textContent = '❌ 暗証番号が違います';
+                msg.className = 'text-[11px] font-bold h-4 text-rose-400';
+            }
+            secretInputBuffer = '';
+            updateSecretDisplay();
+        }
+    };
+
+    // 3. キャラ選択カード・チャレンジステージバー・技表・道場UI・暗証番号UIの動的生成
     function injectCustomCharsDOM() {
         var ladderBar = document.getElementById('challenge-ladder-bar');
-        if (ladderBar && !document.getElementById('ladder-step-17')) {
-            ladderBar.className = "hidden w-full max-w-4xl mx-auto mt-1.5 bg-zinc-950/90 border border-amber-500/60 rounded-xl p-1.5 sm:p-2 grid grid-cols-6 sm:grid-cols-9 gap-1 text-[10px] sm:text-[11px] flex-shrink-0";
+        if (ladderBar && !document.getElementById('ladder-step-25')) {
+            ladderBar.className = "hidden w-full max-w-4xl mx-auto mt-1.5 bg-zinc-950/90 border border-amber-500/60 rounded-xl p-1.5 sm:p-2 grid grid-cols-7 sm:grid-cols-13 gap-1 text-[9px] sm:text-[10px] flex-shrink-0";
             ladderBar.innerHTML = CHALLENGE_LADDER.map(function(cid, idx) {
                 var isBoss = idx === CHALLENGE_LADDER.length - 1;
                 return '<button type="button" onclick="selectChallengeStage(' + idx + ')" id="ladder-step-' + idx + '" class="text-center py-1 px-1 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-400 ' + (isBoss ? 'font-black' : 'font-bold') + ' whitespace-nowrap truncate cursor-pointer active:scale-95 transition-transform">' + (isBoss ? 'BOSS' : 'S' + (idx + 1)) + '</button>';
             }).join('');
         }
 
-        function createOrReplaceCard(side, id, beforeMaou) {
-            var maouCard = document.getElementById(side + '-card-maou');
-            if (!maouCard || !maouCard.parentNode) return;
-            var meta = CHAR_CARD_META[id];
-            var existing = document.getElementById(side + '-card-' + id);
-            if (existing) return;
+        ['p1', 'p2'].forEach(function(side) {
+            var ryujiCard = document.getElementById(side + '-card-ryuji');
+            if (!ryujiCard || !ryujiCard.parentNode) return;
+            var parentGrid = ryujiCard.parentNode;
+            parentGrid.className = "grid grid-cols-5 sm:grid-cols-6 gap-1 max-h-[155px] sm:max-h-[185px] overflow-y-auto pr-0.5";
 
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.id = side + '-card-' + id;
-            btn.setAttribute('onclick', (side === 'p1' ? 'selectP1' : 'selectP2') + "('" + id + "')");
-            btn.className = "p-1.5 rounded-lg border-2 border-zinc-700 bg-zinc-900/80 text-left transition-all opacity-80 hover:opacity-100 cursor-pointer";
-            btn.innerHTML =
-                '<div id="' + side + '-role-' + id + '" class="text-[9px] font-bold text-zinc-500">🔒 SECRET</div>' +
-                '<div id="' + side + '-name-' + id + '" class="text-[10px] font-black text-white leading-tight truncate">？？？</div>' +
-                '<div id="' + side + '-desc-' + id + '" class="text-[8px] text-zinc-400 leading-tight mt-0.5 truncate">チャレンジで解放</div>';
+            ORDERED_ALL_30_CHARS.forEach(function(id) {
+                var card = document.getElementById(side + '-card-' + id);
+                if (!card) {
+                    card = document.createElement('button');
+                    card.type = 'button';
+                    card.id = side + '-card-' + id;
+                    card.setAttribute('onclick', (side === 'p1' ? 'selectP1' : 'selectP2') + "('" + id + "')");
+                    card.className = "p-1.5 rounded-lg border-2 border-zinc-700 bg-zinc-900/80 text-left transition-all opacity-80 hover:opacity-100 cursor-pointer";
+                    card.innerHTML =
+                        '<div id="' + side + '-role-' + id + '" class="text-[9px] font-bold text-zinc-500">🔒 SECRET</div>' +
+                        '<div id="' + side + '-name-' + id + '" class="text-[10px] font-black text-white leading-tight truncate">？？？</div>' +
+                        '<div id="' + side + '-desc-' + id + '" class="text-[8px] text-zinc-400 leading-tight mt-0.5 truncate">チャレンジで解放</div>';
+                }
+                parentGrid.appendChild(card);
+            });
+        });
 
-            if (beforeMaou) {
-                maouCard.parentNode.insertBefore(btn, maouCard);
-            } else {
-                maouCard.parentNode.appendChild(btn);
+        var secretModal = document.getElementById('secret-code-modal');
+        if (secretModal && !document.getElementById('secret-tab-unlock')) {
+            var modalBox = secretModal.querySelector('.bg-zinc-900');
+            var descP = modalBox ? modalBox.querySelector('p') : null;
+            if (descP) {
+                descP.id = 'secret-code-desc-text';
+                var tabWrap = document.createElement('div');
+                tabWrap.className = 'grid grid-cols-2 gap-1.5 mb-2.5';
+                tabWrap.innerHTML =
+                    '<button type="button" id="secret-tab-unlock" onclick="switchSecretCodeMode(\'unlock\')" class="py-1.5 px-2 rounded-lg font-black text-[11px] bg-amber-500 text-black shadow cursor-pointer">🔓 キャラ全解放</button>' +
+                    '<button type="button" id="secret-tab-bp" onclick="switchSecretCodeMode(\'bp\')" class="py-1.5 px-2 rounded-lg font-bold text-[11px] bg-zinc-800 text-zinc-300 hover:bg-zinc-700 cursor-pointer">💰 +100万BP</button>';
+                descP.parentNode.insertBefore(tabWrap, descP);
             }
         }
 
-        ['p1', 'p2'].forEach(function(side) {
-            var maouCard = document.getElementById(side + '-card-maou');
-            if (maouCard && maouCard.parentNode) {
-                maouCard.parentNode.className = "grid grid-cols-4 sm:grid-cols-5 gap-1 max-h-[150px] sm:max-h-[175px] overflow-y-auto pr-0.5";
-            }
-            ['phantom', 'chronos', 'pulserobo', 'vending', 'doppel', 'gigapump'].forEach(function(id) {
-                createOrReplaceCard(side, id, true);
-            });
-            createOrReplaceCard(side, 'venus', false);
-        });
+        var titleSecretBtn = document.querySelector('button[onclick="openSecretCodeModal()"]');
+        if (titleSecretBtn && !document.getElementById('btn-bp-secret-title')) {
+            titleSecretBtn.setAttribute('onclick', "openSecretCodeModal('unlock')");
+            titleSecretBtn.innerHTML = '<span>🔑</span><span>解放暗号</span>';
+            var bpBtn = document.createElement('button');
+            bpBtn.type = 'button';
+            bpBtn.id = 'btn-bp-secret-title';
+            bpBtn.setAttribute('onclick', "openSecretCodeModal('bp')");
+            bpBtn.className = 'px-2 py-1 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-600/80 text-[10px] font-bold text-amber-300 cursor-pointer flex items-center gap-0.5 whitespace-nowrap';
+            bpBtn.innerHTML = '<span>💰</span><span>BP暗号</span>';
+            titleSecretBtn.parentNode.insertBefore(bpBtn, titleSecretBtn.nextSibling);
+        }
 
-        // 強化道場・オーラタブの説明文を新仕様（最大Lv.20＆サバイバル連勝オーラ解放）に更新
         var shopDescP = document.querySelector('#prog-tab-shop > p');
         if (shopDescP) {
             shopDescP.innerHTML = '💡 獲得した <strong>BP（Brawl Points）</strong> で各キャラの<strong>攻撃力・最大体力・ゲージ効率</strong>を<strong>最大Lv.20</strong>まで強化できます！<br><span class="text-amber-300 font-bold">※強化ステータスは「🏆チャレンジ」「🔥サバイバル」で有効になります（「⚔️フリー対戦」では強化なしの公平な標準ステータスになります）。</span>';
@@ -8938,37 +9207,42 @@ window.addEventListener('DOMContentLoaded', () => {
                 '</div>';
         }
 
-        // 難易度選択ボックスの取得と表示切り替え（サバイバルモード専用化）
         var diffEasyBtn = document.getElementById('diff-easy');
         if (diffEasyBtn && diffEasyBtn.parentNode) {
             var diffContainer = diffEasyBtn.parentNode;
             diffContainer.id = 'survival-diff-container';
-            var labelSpan = diffContainer.querySelector('span');
-            if (labelSpan) labelSpan.textContent = 'サバイバル難易度:';
-            if (gameMode === 'survival') {
-                diffContainer.classList.remove('hidden');
-            } else {
-                diffContainer.classList.add('hidden');
-            }
+            diffContainer.classList.add('hidden');
         }
 
         var movesHeader = document.querySelector('#moves-modal h2');
         if (movesHeader) {
-            movesHeader.textContent = '📖 3すくみ＆全20キャラ固有必殺技';
+            movesHeader.textContent = '📖 3すくみ＆全30キャラ固有必殺技';
         }
 
         var movesModalList = document.querySelector('#moves-modal .space-y-3');
-        if (movesModalList && !document.getElementById('moves-entry-chronos')) {
+        if (movesModalList && !document.getElementById('moves-entry-helios')) {
             var entries = [
-                { id: 'venus',     cls: 'bg-amber-950/80 border-amber-400/90',   html: '<strong class="text-amber-300">🪐 ヴィーナス（サバイバル30戦目ボス／ラセツの体力2倍・攻撃1.5倍）：</strong>超重力・体当たり(弱) / 濃硫酸の蒸気＆衝撃波(強) / 惑星メテオぶつけ＆時間差大爆発(崩・超)' },
-                { id: 'gigapump',  cls: 'bg-orange-950/80 border-orange-400/80', html: '<strong class="text-orange-300">💪 ギガ・パンプ（ダメージを受けるほど筋肉が最大1.85倍までリアルタイム巨大化＆攻撃力上昇＆HP50%以下で弱攻撃アーマー！）：</strong>ダブルバイセップス衝撃波(弱) / プロテインシェイカー＆剛腕ラリアット(強) / ポージング覇気ボディプレス(崩) / フルパンプ1000kgダンベル大噴火(超)' },
-                { id: 'doppel',    cls: 'bg-purple-950/80 border-purple-400/80', html: '<strong class="text-purple-300">🃏 ドッペル（背後の『影分身』が0.3秒遅れて同じ技を繰り出し、全攻撃が時間差2連撃になる！）：</strong>カミソリトランプ2連射(弱) / パントマイム見えない壁粉砕(強) / 瞬間移動・シャドウ奇襲斬り(崩) / ミラーハウス百人分身総攻撃(超)' },
-                { id: 'vending',   cls: 'bg-rose-950/80 border-rose-400/80',     html: '<strong class="text-rose-300">🥫 暴走自販機（青い缶で敵を『氷結停止』させ、赤い缶で『火傷スリップダメージ』を与える！）：</strong>空き缶マシンガン連射(弱) / つめた〜い氷結缶＆あったか〜い灼熱缶(強) / 重量800kg自販機のしかかりプレス(崩) / 当たり777ルーレット大噴火(超)' },
-                { id: 'pulserobo', cls: 'bg-teal-950/80 border-teal-400/80',     html: '<strong class="text-teal-300">🤖 パルス・ロボ（HPが0になると1回だけ『360Jオートショック』で電撃を放ちHP30%で自動蘇生＆強・必殺技で相手を磁力吸引！）：</strong>スタンパドル連打(弱) / 超磁力吸引＆高圧電撃アッパー(強) / 360Jフルパワー除細動ショック(崩) / ハイボルテージ大放電(超)' },
-                { id: 'chronos',   cls: 'bg-yellow-950/80 border-amber-300/80',  html: '<strong class="text-amber-200">🕰️ クロノス（必殺技『崩・超』がヒットすると約2.5秒間、敵の時間を完全に止める『TIME STOP』発動！）：</strong>秒針レイピア高速突き(弱) / 黄金ギロチン振り子大スイング(強) / 12時の鐘・タイムフリーズ(崩：時間停止) / クロノス・ゼロ時空歯車嵐(超：時間停止)' },
-                { id: 'phantom',   cls: 'bg-slate-900/90 border-yellow-300/80',  html: '<strong class="text-yellow-200">👻 ファントム（HP50%以下で自動的に『INVISIBLE（完全透明化）』し、攻撃時の波動だけが見える！）：</strong>霊波パルス(弱) / 真空・大波動刃(強) / ファントム・ショックウェーブ(崩) / インビジブル・ディメンション(超)' }
+                { id: 'helios',    cls: 'bg-yellow-950/90 border-yellow-300/90',   html: '<strong class="text-yellow-300">☀️ ヘリオス（サバイバル50戦目ボス／6000℃の常時コロナ熱放射で接近する敵のHPを焼き続け、太陽風で吹き飛ばす恒星ボス！）：</strong>コロナフレア放射(弱) / 太陽風プラズマ衝撃波(強) / スーパーノヴァ・プロミネンス大爆発(崩・超)' },
+                { id: 'abyss',     cls: 'bg-fuchsia-950/85 border-fuchsia-400/90', html: '<strong class="text-fuchsia-300">🕳️ アビス（サバイバル40戦目ボス／常時重力吸引で相手を引き寄せ続け、必殺技で相手を『無重力浮遊』にして無防備にする暗黒天体！）：</strong>事象の地平線・重力波パルス(弱) / 空間歪曲・ブラックホール圧殺(強) / ゼロ・グラビティ無重力浮遊(崩) / シンギュラリティ超新星大崩壊(超)' },
+                { id: 'venus',     cls: 'bg-amber-950/80 border-amber-400/90',     html: '<strong class="text-amber-300">🪐 ヴィーナス（サバイバル30戦目ボス／ラセツの体力2倍・攻撃1.5倍）：</strong>超重力・体当たり(弱) / 濃硫酸の蒸気＆衝撃波(強) / 惑星メテオぶつけ＆時間差大爆発(崩・超)' },
+                { id: 'vending',   cls: 'bg-rose-950/80 border-rose-400/80',       html: '<strong class="text-rose-300">🥫 暴走自販機（青い缶で敵を『氷結停止』させ、赤い缶で『火傷スリップダメージ』を与える！）：</strong>空き缶マシンガン連射(弱) / つめた〜い氷結缶＆あったか〜い灼熱缶(強) / 重量800kg自販機のしかかりプレス(崩) / 当たり777ルーレット大噴火(超)' },
+                { id: 'chronos',   cls: 'bg-yellow-950/80 border-amber-300/80',    html: '<strong class="text-amber-200">🕰️ クロノス（必殺技『崩・超』がヒットすると約2.5秒間、敵の時間を完全に止める『TIME STOP』発動！）：</strong>秒針レイピア高速突き(弱) / 黄金ギロチン振り子大スイング(強) / 12時の鐘・タイムフリーズ(崩：時間停止) / クロノス・ゼロ時空歯車嵐(超：時間停止)' },
+                { id: 'gigapump',  cls: 'bg-orange-950/80 border-orange-400/80',   html: '<strong class="text-orange-300">💪 ギガ・パンプ（ダメージを受けるほど筋肉が最大1.85倍までリアルタイム巨大化＆攻撃力上昇＆HP50%以下で弱攻撃アーマー！）：</strong>ダブルバイセップス衝撃波(弱) / プロテインシェイカー＆剛腕ラリアット(強) / ポージング覇気ボディプレス(崩) / フルパンプ1000kgダンベル大噴火(超)' },
+                { id: 'doppel',    cls: 'bg-purple-950/80 border-purple-400/80',   html: '<strong class="text-purple-300">🃏 ドッペル（背後の『影分身』が0.3秒遅れて同じ技を繰り出し、全攻撃が時間差2連撃になる！）：</strong>カミソリトランプ2連射(弱) / パントマイム見えない壁粉砕(強) / 瞬間移動・シャドウ奇襲斬り(崩) / ミラーハウス百人分身総攻撃(超)' },
+                { id: 'phantom',   cls: 'bg-slate-900/90 border-yellow-300/80',    html: '<strong class="text-yellow-200">👻 ファントム（HP50%以下で自動的に『INVISIBLE（完全透明化）』し、攻撃時の波動だけが見える！）：</strong>霊波パルス(弱) / 真空・大波動刃(強) / ファントム・ショックウェーブ(崩) / インビジブル・ディメンション(超)' },
+                { id: 'pulserobo', cls: 'bg-teal-950/80 border-teal-400/80',       html: '<strong class="text-teal-300">🤖 パルス・ロボ（HPが0になると1回だけ『360Jオートショック』で電撃を放ちHP30%で自動蘇生＆強・必殺技で相手を磁力吸引！）：</strong>スタンパドル連打(弱) / 超磁力吸引＆高圧電撃アッパー(強) / 360Jフルパワー除細動ショック(崩) / ハイボルテージ大放電(超)' },
+                { id: 'slotjack',  cls: 'bg-yellow-950/85 border-yellow-400/80',   html: '<strong class="text-yellow-300">🎰 スロット・ジャック（攻撃ごとに胸の3連リールが回転！🍒でHP回復、🔔でゲージ+35%、💀で毒デバフ、777揃いで一定時間『FEVER（攻撃力1.6倍＆金貨大放出）』突入！）：</strong>メダルマシンガン射出(弱) / 巨大スロットレバー強打(強) / ジャックポット777大放出(崩) / カジノロワイヤル・ミリオンコイン嵐(超)' },
+                { id: 'traffic',   cls: 'bg-emerald-950/80 border-emerald-400/80', html: '<strong class="text-emerald-300">🚦 トラフィック（頭部の3色信号が『🟢青：速度1.4倍』『🟡黄：ゲージ自動増加』『🔴赤：相手が前進・通常攻撃すると信号無視の罰金雷撃カウンター！』に切り替わる！）：</strong>止まれ標識スピア突き(弱) / ガードレール大盾強打(強) / 強制赤信号・違反取締り雷撃(崩) / スクランブル交差点・全信号大暴走(超)' },
+                { id: 'roentgen',  cls: 'bg-cyan-950/85 border-cyan-400/80',       html: '<strong class="text-cyan-300">🩻 Dr.レントゲン（強・必殺技の『X線フラッシュ』を浴びた相手は4秒間『レントゲン骨格透視状態』になり、被ダメージ+35%＆ガード削り3倍になる！）：</strong>シャウカステン盾バッシュ(弱) / 高電圧X線管球パルス砲(強) / 全身透視レントゲンフラッシュ照射(崩) / メガシーベルト・フルスキャン大照射(超)' },
+                { id: 'stretcher', cls: 'bg-sky-950/80 border-sky-400/80',         html: '<strong class="text-sky-300">🛏️ 零号室（強・必殺技が当たると相手をストレッチャーに乗せて画面端の壁まで強制搬送し、激突壁バウンドの追加大ダメージを与える！）：</strong>キャスター車輪スピン(弱) / ステンレス柵ギロチン開閉(強) / 拘束ベルト射出・画面端強制搬送(崩) / コード・エマージェンシー往復暴走(超)' },
+                { id: 'totonoi',   cls: 'bg-amber-950/80 border-orange-400/80',    html: '<strong class="text-amber-300">🧖‍♂️ トトノイ親方（熱波タオル＆ロウリュ蒸気で相手の『HEAT（熱波カウント）』を溜め、2スタック以上で『極冷・水風呂ぶっかけ(崩)』を当てると温度差ショックで強制『ととのい気絶』させる！）：</strong>熱波アウフグース旋風(弱) / 灼熱ロウリュ蒸気波(強) / 極冷・水風呂バケツぶっかけ(崩) / サウナトランス・整い大昇天乱舞(超)' },
+                { id: 'drskull',   cls: 'bg-zinc-900/90 border-zinc-400/80',       html: '<strong class="text-zinc-200">🦴 Dr.スカル（しゃがみガード中に全身の骨がバラバラに崩れ落ちて当たり判定が極小化し、相手の打点の高い通常攻撃を無効化する！）：</strong>頭蓋骨ヘッドショット投げ(弱) / 大腿骨ボーン強打(強) / 肋骨ブーメラン挟み撃ち(崩) / 解剖学・ボーンストーム大竜巻(超)' },
+                { id: 'kraken',    cls: 'bg-pink-950/80 border-pink-400/80',       html: '<strong class="text-pink-300">🗑️ ダスト・クラーケン（しゃがみガード中は金属ドラム缶に引きこもって削りダメージ80%軽減！必殺技の『イカスミ煙幕』で相手を墨まみれにして速度＆リーチを低下させる！）：</strong>吸盤タコ触手ウィップ(弱) / ドラム缶スピン大強打(強) / イカスミ粘液ブラインド噴射(崩) / 深海クラーケン・6本触手大暴れ(超)' },
+                { id: 'gensan',    cls: 'bg-orange-950/80 border-amber-500/80',    html: '<strong class="text-amber-300">🍜 鉄鍋の源さん（地面に『激辛ラー油床』を設置して相手の足元をツルツル滑らせ、炎の中華鍋攻撃でラー油に引火させて大爆発を起こす！）：</strong>おたま連打＆熱々スープ浴びせ(弱) / 灼熱の大中華鍋フルスイング(強) / 激辛ラー油撒き＆大火柱フランベ(崩) / 地獄の替え玉・屋台ごと大噴火(超)' }
             ];
             entries.forEach(function(item) {
+                var ex = document.getElementById('moves-entry-' + item.id);
+                if (ex) ex.remove();
                 var div = document.createElement('div');
                 div.id = 'moves-entry-' + item.id;
                 div.className = 'p-3 rounded-xl border ' + item.cls;
@@ -8978,7 +9252,9 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 3. 新キャラクター専用サウンドエフェクト（元の音を完全維持）
+    // =========================================================================
+    // 4. 全追加キャラクター専用サウンドエフェクト（全17種）
+    // =========================================================================
     SoundEngine.prototype.phantomWaveSound = function() {
         this.init(); if (!this.seEnabled || !this.ctx) return;
         var now = this.ctx.currentTime, self = this;
@@ -8988,7 +9264,7 @@ window.addEventListener('DOMContentLoaded', () => {
             osc.frequency.setValueAtTime(freq, now + i * 0.03);
             osc.frequency.exponentialRampToValueAtTime(freq * 0.45, now + 0.28);
             g.gain.setValueAtTime(0.15, now + i * 0.03);
-            g.gain.exponentialRampToValueAtTime(0.005, now + 0.29);
+            g.gain.exponentialRampToValueAtTime(0.005, now + i * 0.03 + 0.29);
             osc.connect(g); g.connect(self.ctx.destination);
             osc.start(now + i * 0.03); osc.stop(now + 0.30);
         });
@@ -9077,9 +9353,149 @@ window.addEventListener('DOMContentLoaded', () => {
             osc.start(now + idx * 0.04); osc.stop(now + 0.55);
         });
     };
+    SoundEngine.prototype.wokSizzleSound = function() {
+        this.init(); if (!this.seEnabled || !this.ctx) return;
+        var now = this.ctx.currentTime, self = this;
+        [740, 1110].forEach(function(freq, i) {
+            var osc = self.ctx.createOscillator(), g = self.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + i * 0.05);
+            osc.frequency.exponentialRampToValueAtTime(280, now + i * 0.05 + 0.09);
+            g.gain.setValueAtTime(0.22, now + i * 0.05);
+            g.gain.exponentialRampToValueAtTime(0.006, now + i * 0.05 + 0.1);
+            osc.connect(g); g.connect(self.ctx.destination);
+            osc.start(now + i * 0.05); osc.stop(now + i * 0.05 + 0.11);
+        });
+        this.playNoise(0.34, 0.35, 1400);
+    };
+    SoundEngine.prototype.boneRattleSound = function() {
+        this.init(); if (!this.seEnabled || !this.ctx) return;
+        var now = this.ctx.currentTime, self = this;
+        [1320, 1760, 990, 1540].forEach(function(freq, i) {
+            var osc = self.ctx.createOscillator(), g = self.ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(freq, now + i * 0.035);
+            osc.frequency.exponentialRampToValueAtTime(420, now + i * 0.035 + 0.05);
+            g.gain.setValueAtTime(0.16, now + i * 0.035);
+            g.gain.exponentialRampToValueAtTime(0.005, now + i * 0.035 + 0.055);
+            osc.connect(g); g.connect(self.ctx.destination);
+            osc.start(now + i * 0.035); osc.stop(now + i * 0.035 + 0.06);
+        });
+        this.playNoise(0.14, 0.22, 2200);
+    };
+    SoundEngine.prototype.stretcherSirenSound = function() {
+        this.init(); if (!this.seEnabled || !this.ctx) return;
+        var now = this.ctx.currentTime;
+        var osc = this.ctx.createOscillator(), g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(960, now);
+        osc.frequency.setValueAtTime(770, now + 0.14);
+        osc.frequency.setValueAtTime(960, now + 0.28);
+        g.gain.setValueAtTime(0.18, now);
+        g.gain.exponentialRampToValueAtTime(0.006, now + 0.42);
+        osc.connect(g); g.connect(this.ctx.destination);
+        osc.start(now); osc.stop(now + 0.43);
+        this.playNoise(0.24, 0.25, 1800);
+    };
+    SoundEngine.prototype.trafficBuzzerSound = function() {
+        this.init(); if (!this.seEnabled || !this.ctx) return;
+        var now = this.ctx.currentTime, self = this;
+        [1568, 1318.5, 440].forEach(function(freq, i) {
+            var osc = self.ctx.createOscillator(), g = self.ctx.createGain();
+            osc.type = i === 2 ? 'sawtooth' : 'sine';
+            osc.frequency.setValueAtTime(freq, now + i * 0.06);
+            g.gain.setValueAtTime(0.18, now + i * 0.06);
+            g.gain.exponentialRampToValueAtTime(0.006, now + i * 0.06 + 0.14);
+            osc.connect(g); g.connect(self.ctx.destination);
+            osc.start(now + i * 0.06); osc.stop(now + i * 0.06 + 0.15);
+        });
+    };
+    SoundEngine.prototype.abyssGravitySound = function() {
+        this.init(); if (!this.seEnabled || !this.ctx) return;
+        var now = this.ctx.currentTime, self = this;
+        [55, 82.4, 110].forEach(function(freq, i) {
+            var osc = self.ctx.createOscillator(), g = self.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq * 1.6, now);
+            osc.frequency.exponentialRampToValueAtTime(28, now + 0.52);
+            g.gain.setValueAtTime(0.24 / (i + 1), now);
+            g.gain.exponentialRampToValueAtTime(0.005, now + 0.54);
+            osc.connect(g); g.connect(self.ctx.destination);
+            osc.start(now); osc.stop(now + 0.55);
+        });
+        this.playNoise(0.45, 0.35, 320);
+    };
+    SoundEngine.prototype.slotSpinSound = function() {
+        this.init(); if (!this.seEnabled || !this.ctx) return;
+        var now = this.ctx.currentTime, self = this;
+        [1046.5, 1318.5, 1567.98, 2093.0].forEach(function(freq, i) {
+            var osc = self.ctx.createOscillator(), g = self.ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(freq, now + i * 0.04);
+            g.gain.setValueAtTime(0.15, now + i * 0.04);
+            g.gain.exponentialRampToValueAtTime(0.005, now + i * 0.04 + 0.12);
+            osc.connect(g); g.connect(self.ctx.destination);
+            osc.start(now + i * 0.04); osc.stop(now + i * 0.04 + 0.13);
+        });
+    };
+    SoundEngine.prototype.xrayFlashSound = function() {
+        this.init(); if (!this.seEnabled || !this.ctx) return;
+        var now = this.ctx.currentTime;
+        var osc = this.ctx.createOscillator(), g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(620, now);
+        osc.frequency.exponentialRampToValueAtTime(2480, now + 0.22);
+        g.gain.setValueAtTime(0.2, now);
+        g.gain.exponentialRampToValueAtTime(0.006, now + 0.25);
+        osc.connect(g); g.connect(this.ctx.destination);
+        osc.start(now); osc.stop(now + 0.26);
+        this.playNoise(0.18, 0.28, 1900);
+    };
+    SoundEngine.prototype.saunaSteamSound = function() {
+        this.init(); if (!this.seEnabled || !this.ctx) return;
+        this.playNoise(0.38, 0.36, 1250);
+    };
+    SoundEngine.prototype.krakenInkSound = function() {
+        this.init(); if (!this.seEnabled || !this.ctx) return;
+        var now = this.ctx.currentTime;
+        var osc = this.ctx.createOscillator(), g = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.exponentialRampToValueAtTime(95, now + 0.24);
+        g.gain.setValueAtTime(0.25, now);
+        g.gain.exponentialRampToValueAtTime(0.008, now + 0.26);
+        osc.connect(g); g.connect(this.ctx.destination);
+        osc.start(now); osc.stop(now + 0.27);
+        this.playNoise(0.25, 0.3, 640);
+    };
+    SoundEngine.prototype.heliosFlareSound = function() {
+        this.init(); if (!this.seEnabled || !this.ctx) return;
+        var now = this.ctx.currentTime, self = this;
+        [73.4, 110.0, 146.8, 220.0].forEach(function(freq, i) {
+            var osc = self.ctx.createOscillator(), g = self.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq * 1.5, now + i * 0.025);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.5, now + 0.48);
+            g.gain.setValueAtTime(0.22 / (i + 1), now + i * 0.025);
+            g.gain.exponentialRampToValueAtTime(0.005, now + 0.5);
+            osc.connect(g); g.connect(self.ctx.destination);
+            osc.start(now + i * 0.025); osc.stop(now + 0.52);
+        });
+        this.playNoise(0.45, 0.42, 720);
+    };
 
     var origPlayCharSelectVoice = playCharSelectVoice;
     playCharSelectVoice = function(charId) {
+        if (charId === 'gensan')    { sfx.wokSizzleSound(); return; }
+        if (charId === 'kraken')    { sfx.krakenInkSound(); return; }
+        if (charId === 'drskull')   { sfx.boneRattleSound(); return; }
+        if (charId === 'totonoi')   { sfx.saunaSteamSound(); return; }
+        if (charId === 'stretcher') { sfx.stretcherSirenSound(); return; }
+        if (charId === 'roentgen')  { sfx.xrayFlashSound(); return; }
+        if (charId === 'traffic')   { sfx.trafficBuzzerSound(); return; }
+        if (charId === 'slotjack')  { sfx.slotSpinSound(); return; }
+        if (charId === 'abyss')     { sfx.abyssGravitySound(); return; }
+        if (charId === 'helios')    { sfx.heliosFlareSound(); return; }
         if (charId === 'phantom')   { sfx.phantomVanishSound(); return; }
         if (charId === 'chronos')   { sfx.chronosBellSound(); return; }
         if (charId === 'pulserobo') { sfx.defibShockSound(); return; }
@@ -9091,7 +9507,7 @@ window.addEventListener('DOMContentLoaded', () => {
     };
 
     // =========================================================================
-    // 4. 各キャラクターのヘッド＆全身グラフィック描画関数（元の見た目を100%維持）
+    // 5. 各キャラクターのヘッド＆全身グラフィック描画関数（パートA：1〜12体目）
     // =========================================================================
 
     // ① 👻 ファントム
@@ -9702,9 +10118,1223 @@ window.addEventListener('DOMContentLoaded', () => {
         ctx.restore();
     };
 
+    // ⑧ 🍜 鉄鍋の源さん
+    window.drawGensanHead = function(ctx, x, y, scale, isHit, isAttacking) {
+        scale = scale || 1;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        ctx.fillStyle = '#c68252';
+        ctx.fillRect(-11, -3, 22, 18);
+
+        var faceGrad = ctx.createRadialGradient(3, -24, 3, 0, -22, 28);
+        faceGrad.addColorStop(0, '#f3c39e');
+        faceGrad.addColorStop(0.55, '#d4956a');
+        faceGrad.addColorStop(1, '#8c5230');
+        ctx.fillStyle = faceGrad;
+        ctx.strokeStyle = '#451a03';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.roundRect(-20, -45, 40, 48, 11);
+        ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.38)';
+        ctx.beginPath();
+        ctx.roundRect(-18, -17, 36, 19, 7);
+        ctx.fill();
+
+        [-5, 10].forEach(function(ex) {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(ex, -24, 4.2, isHit ? 3.8 : 2.4, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#09090b';
+            ctx.beginPath(); ctx.arc(ex + 0.8, -24, 1.9, 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.strokeStyle = '#18181b';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(-13, -31); ctx.lineTo(-1, -27);
+        ctx.moveTo(18, -31); ctx.lineTo(5, -27);
+        ctx.stroke();
+
+        ctx.fillStyle = isAttacking || isHit ? '#7f1d1d' : '#f8fafc';
+        ctx.strokeStyle = '#18181b';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(-6, -11, 16, isAttacking ? 8 : 5, 2);
+        ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = '#18181b';
+        ctx.beginPath();
+        ctx.roundRect(-21, -52, 42, 14, 4);
+        ctx.fill();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-22, -41, 44, 8, 3);
+        ctx.fill(); ctx.stroke();
+        for (var tx = -16; tx <= 14; tx += 8) {
+            ctx.beginPath(); ctx.moveTo(tx, -41); ctx.lineTo(tx + 4, -33); ctx.stroke();
+        }
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath(); ctx.arc(-23, -37, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+        ctx.restore();
+    };
+
+    Fighter.prototype.drawGensan = function(ctx) {
+        var t = this.animTime;
+        var breath = Math.sin(t * 0.12) * 2;
+        ctx.save();
+        if (this.state === 'ko') { ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 95); }
+
+        var hipY = (this.state === 'crouch') ? -68 : -92 + breath * 0.5;
+        var torsoLean = (this.state === 'attack') ? 0.28 : 0.08;
+        var walkSwing = (this.state === 'walk') ? Math.sin(t * 0.3) * 24 : 0;
+
+        ctx.save();
+        ctx.translate(-14, hipY - 58);
+        ctx.fillStyle = '#78350f';
+        ctx.strokeStyle = '#451a03';
+        ctx.lineWidth = 2;
+        ctx.fillRect(-26, -34, 6, 86);
+        ctx.fillRect(-30, -38, 48, 7);
+        ctx.fillStyle = '#dc2626';
+        ctx.strokeStyle = '#fef08a';
+        ctx.lineWidth = 1.4;
+        [-24, -8, 8].forEach(function(nx, idx) {
+            ctx.fillRect(nx, -31, 14, 24);
+            ctx.strokeRect(nx, -31, 14, 24);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 9px "Noto Sans JP", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(['激', '辛', '魂'][idx], nx + 7, -15);
+            ctx.fillStyle = '#dc2626';
+        });
+        ctx.restore();
+
+        drawRoundedLimb(ctx, -10, hipY, -18 + walkSwing, -6, 14, 11, '#1e293b', '#09090b');
+        drawRoundedLimb(ctx, 10, hipY, 20 - walkSwing, -6, 14, 11, '#334155', '#09090b');
+        ctx.fillStyle = '#09090b';
+        ctx.fillRect(-26 + walkSwing, -10, 22, 10);
+        ctx.fillRect(12 - walkSwing, -10, 22, 10);
+
+        var lHandX = this.state === 'attack' && this.attackType === 'light' ? 78 : -18;
+        var lHandY = hipY - 38;
+        drawRoundedLimb(ctx, -12, hipY - 52, lHandX, lHandY, 12, 10, '#d4956a', '#7c4728');
+        ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 3.5;
+        ctx.beginPath(); ctx.moveTo(lHandX, lHandY); ctx.lineTo(lHandX + 26, lHandY - 12); ctx.stroke();
+        ctx.fillStyle = '#e2e8f0';
+        ctx.beginPath(); ctx.arc(lHandX + 28, lHandY - 12, 7, 0, Math.PI); ctx.fill();
+
+        ctx.save();
+        ctx.translate(0, hipY);
+        ctx.rotate(torsoLean);
+        ctx.fillStyle = '#18181b';
+        ctx.strokeStyle = '#3f3f46';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.roundRect(-24, -64, 48, 60, 10); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#94a3b8';
+        ctx.beginPath(); ctx.roundRect(-20, -14, 42, 34, 4); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(-22, -16, 46, 5);
+
+        drawGensanHead(ctx, 2, -68, 0.98, this.state === 'hit', this.state === 'attack');
+        ctx.restore();
+
+        var rHandX = (this.state === 'attack') ? 76 : 36;
+        var rHandY = (this.state === 'attack') ? hipY - 46 : hipY - 36;
+        drawRoundedLimb(ctx, 12, hipY - 50, rHandX, rHandY, 13, 11, '#eab68e', '#7c4728');
+
+        ctx.save();
+        ctx.translate(rHandX + 12, rHandY);
+        if (this.state === 'attack') ctx.rotate(Math.sin(this.attackFrame * 0.6) * 0.5);
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(-16, -3, 18, 6);
+        var wokGrad = ctx.createRadialGradient(16, 0, 4, 16, 0, 28);
+        wokGrad.addColorStop(0, this.state === 'attack' ? '#f97316' : '#52525b');
+        wokGrad.addColorStop(0.6, '#18181b');
+        wokGrad.addColorStop(1, '#09090b');
+        ctx.fillStyle = wokGrad;
+        ctx.strokeStyle = this.state === 'attack' ? '#fde047' : '#71717a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(16, 0, 24, -Math.PI * 0.55, Math.PI * 0.55);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+
+        if (this.state === 'attack') {
+            var fLen = (this.attackType === 'special' || this.attackType === 'super') ? 135 : 68;
+            var fGrad = ctx.createLinearGradient(16, 0, 16 + fLen, -35);
+            fGrad.addColorStop(0, '#fef08a');
+            fGrad.addColorStop(0.5, '#f97316');
+            fGrad.addColorStop(1, 'rgba(220, 38, 38, 0)');
+            ctx.fillStyle = fGrad;
+            ctx.beginPath();
+            ctx.moveTo(16, -18);
+            ctx.quadraticCurveTo(16 + fLen * 0.6, -55 - Math.sin(t) * 15, 16 + fLen, -10);
+            ctx.quadraticCurveTo(16 + fLen * 0.5, 28, 16, 18);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.restore();
+        ctx.restore();
+    };
+
+    // ⑨ 🦴 Dr.スカル
+    window.drawDrSkullHead = function(ctx, x, y, scale, isHit, isAttacking) {
+        scale = scale || 1;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        ctx.fillStyle = '#e2e8f0';
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1.4;
+        [-2, 4, 10].forEach(function(vy) {
+            ctx.beginPath(); ctx.roundRect(-6, vy, 12, 5, 2); ctx.fill(); ctx.stroke();
+        });
+
+        var skullGrad = ctx.createRadialGradient(2, -28, 3, 0, -24, 26);
+        skullGrad.addColorStop(0, '#ffffff');
+        skullGrad.addColorStop(0.65, '#e2e8f0');
+        skullGrad.addColorStop(1, '#94a3b8');
+        ctx.fillStyle = skullGrad;
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(0, -26, 20, Math.PI * 0.85, Math.PI * 2.15);
+        ctx.lineTo(15, -10);
+        ctx.lineTo(-13, -10);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+
+        var jawDrop = (isAttacking || isHit) ? 7 : 1;
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.roundRect(-12, -10 + jawDrop, 25, 10, 4);
+        ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = '#f8fafc';
+        for (var tx = -9; tx <= 9; tx += 4.5) {
+            ctx.fillRect(tx, -12, 3.5, 4);
+            ctx.fillRect(tx, -9 + jawDrop, 3.5, 4);
+        }
+
+        [-6, 8].forEach(function(ex) {
+            ctx.fillStyle = '#09090b';
+            ctx.beginPath(); ctx.arc(ex, -23, 5.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = isHit ? '#ef4444' : '#22d3ee';
+            ctx.beginPath(); ctx.arc(ex + 0.8, -23, isAttacking ? 3.2 : 2.2, 0, Math.PI * 2); ctx.fill();
+        });
+
+        ctx.fillStyle = '#09090b';
+        ctx.beginPath();
+        ctx.moveTo(1, -20); ctx.lineTo(-2.5, -14); ctx.lineTo(4.5, -14);
+        ctx.closePath(); ctx.fill();
+
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(-20, -37, 40, 4);
+        ctx.fillStyle = '#38bdf8';
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.ellipse(10, -38, 8, 9, 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+        ctx.restore();
+    };
+
+    Fighter.prototype.drawDrSkull = function(ctx) {
+        var t = this.animTime;
+        ctx.save();
+
+        if (this.state === 'crouch' || this.state === 'ko') {
+            var jitter = (this.state === 'crouch') ? Math.sin(t * 0.5) * 2 : 0;
+            ctx.fillStyle = '#e2e8f0';
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 1.6;
+            ctx.beginPath(); ctx.ellipse(0, -10, 44, 12, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.strokeStyle = '#f8fafc';
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            [[-28, -14, -6, -6], [8, -18, 32, -8], [-18, -22, 14, -12]].forEach(function(b) {
+                ctx.beginPath(); ctx.moveTo(b[0], b[1] + jitter); ctx.lineTo(b[2], b[3]); ctx.stroke();
+            });
+            drawDrSkullHead(ctx, 12, -8 + jitter, 0.95, false, false);
+            ctx.restore();
+            return;
+        }
+
+        var hipY = -94 + Math.sin(t * 0.14) * 2;
+        var walkSwing = (this.state === 'walk') ? Math.sin(t * 0.32) * 24 : 0;
+
+        drawRoundedLimb(ctx, -9, hipY, -16 + walkSwing, -6, 6, 4.5, '#e2e8f0', '#475569');
+        drawRoundedLimb(ctx, 9, hipY, 18 - walkSwing, -6, 6, 4.5, '#f8fafc', '#475569');
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-20, hipY - 58);
+        ctx.lineTo(18, hipY - 58);
+        ctx.lineTo(28, hipY + 26);
+        ctx.lineTo(-28, hipY + 26);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(0, hipY); ctx.lineTo(0, hipY - 62); ctx.stroke();
+        ctx.lineWidth = 3.5;
+        for (var ry = hipY - 52; ry <= hipY - 18; ry += 9) {
+            ctx.beginPath();
+            ctx.ellipse(2, ry, 17, 4.5, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        var headOffsetX = (this.state === 'attack' && this.attackType === 'light') ? 45 + Math.sin(Math.min(1, this.attackFrame / 10) * Math.PI) * 115 : 2;
+        var headOffsetY = (this.state === 'attack' && this.attackType === 'light') ? hipY - 48 : hipY - 64;
+        drawDrSkullHead(ctx, headOffsetX, headOffsetY, 1.0, this.state === 'hit', this.state === 'attack');
+
+        var rHandX = (this.state === 'attack') ? 74 : 32;
+        var rHandY = hipY - 42;
+        drawRoundedLimb(ctx, 12, hipY - 54, rHandX, rHandY, 6, 4.5, '#f8fafc', '#475569');
+
+        if (this.state === 'attack' && this.attackType !== 'light') {
+            var f = this.attackFrame;
+            if (this.attackType === 'heavy') {
+                drawRoundedLimb(ctx, rHandX, rHandY, rHandX + 68, rHandY - 18, 8, 12, '#fef9c3', '#475569');
+            } else {
+                for (var b = 0; b < 3; b++) {
+                    var bx = 48 + f * 9 + b * 28;
+                    var by = hipY - 44 + Math.sin(f * 0.6 + b) * 26;
+                    ctx.save();
+                    ctx.translate(bx, by);
+                    ctx.rotate(f * 0.7 + b);
+                    ctx.strokeStyle = '#22d3ee';
+                    ctx.lineWidth = 5;
+                    ctx.beginPath(); ctx.arc(0, 0, 18, -Math.PI * 0.6, Math.PI * 0.6); ctx.stroke();
+                    ctx.restore();
+                }
+            }
+        }
+
+        ctx.restore();
+    };
+
+    // ⑩ 🛏️ 零号室（呪いの救急ストレッチャー）
+    window.drawStretcherHead = function(ctx, x, y, scale, isHit, isAttacking) {
+        scale = scale || 1;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(-18, 10); ctx.lineTo(-18, -52); ctx.lineTo(-6, -52);
+        ctx.stroke();
+        ctx.fillStyle = '#dc2626';
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.roundRect(-12, -48, 12, 18, 3); ctx.fill(); ctx.stroke();
+
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.roundRect(-24, -18, 48, 26, 5); ctx.stroke();
+
+        var sirenOn = (frameCounter % 10 < 5) || isAttacking;
+        ctx.fillStyle = sirenOn ? '#ef4444' : '#7f1d1d';
+        ctx.beginPath(); ctx.arc(-20, -24, 6, Math.PI, 0); ctx.fill();
+
+        var headGrad = ctx.createRadialGradient(2, -24, 2, 0, -24, 20);
+        headGrad.addColorStop(0, '#f8fafc');
+        headGrad.addColorStop(0.7, '#cbd5e1');
+        headGrad.addColorStop(1, '#64748b');
+        ctx.fillStyle = headGrad;
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(2, -24, 17, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.4;
+        for (var by = -36; by <= -12; by += 6) {
+            ctx.beginPath(); ctx.moveTo(-13, by); ctx.lineTo(17, by + 3); ctx.stroke();
+        }
+
+        ctx.fillStyle = '#09090b';
+        ctx.fillRect(-4, -27, 16, 6);
+        ctx.fillStyle = isHit ? '#fde047' : '#ef4444';
+        ctx.beginPath(); ctx.arc(6, -24, isAttacking ? 3.5 : 2.5, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = 'rgba(185, 28, 28, 0.78)';
+        ctx.beginPath(); ctx.arc(-6, -15, 5, 0, Math.PI * 2); ctx.fill();
+
+        ctx.restore();
+    };
+
+    Fighter.prototype.drawStretcher = function(ctx) {
+        var t = this.animTime;
+        var vibe = Math.sin(t * 0.45) * 1.5;
+        ctx.save();
+        if (this.state === 'ko') { ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 85); }
+
+        var bedY = (this.state === 'crouch') ? -42 : -64 + vibe;
+        var wheelRot = this.x * 0.15;
+
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 4.5;
+        ctx.beginPath();
+        ctx.moveTo(-42, -10); ctx.lineTo(38, bedY);
+        ctx.moveTo(42, -10);  ctx.lineTo(-38, bedY);
+        ctx.moveTo(-48, -10); ctx.lineTo(48, -10);
+        ctx.stroke();
+
+        [-42, -14, 14, 42].forEach(function(wx) {
+            ctx.save();
+            ctx.translate(wx, -7);
+            ctx.rotate(wheelRot);
+            ctx.fillStyle = '#09090b';
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0, 0, 7.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.restore();
+        });
+
+        ctx.fillStyle = '#f1f5f9';
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(-56, bedY - 14, 112, 16, 5); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(-54, bedY - 4, 108, 5);
+
+        var arch = (this.state === 'attack') ? -14 : Math.sin(t * 0.18) * 5;
+        ctx.fillStyle = '#e2e8f0';
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(-36, bedY - 14);
+        ctx.quadraticCurveTo(0, bedY - 38 + arch, 34, bedY - 14);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = '#18181b';
+        [-18, 4, 22].forEach(function(bx) {
+            ctx.fillRect(bx, bedY - 26, 6, 16);
+        });
+
+        drawStretcherHead(ctx, 32, bedY - 14 + arch * 0.4, 0.96, this.state === 'hit', this.state === 'attack');
+
+        var railLift = (this.state === 'attack' && this.attackType === 'heavy') ? -28 : 0;
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.roundRect(-38, bedY - 28 + railLift, 76, 16, 4);
+        ctx.stroke();
+
+        if (this.state === 'attack') {
+            var f = this.attackFrame;
+            var beltReach = 55 + Math.min(1, f / 12) * 165;
+            ctx.strokeStyle = '#18181b';
+            ctx.lineWidth = 6;
+            [-12, 4].forEach(function(by, idx) {
+                var tipY = bedY - 18 + by + Math.sin(f * 0.8 + idx) * 16;
+                ctx.beginPath();
+                ctx.moveTo(48, bedY - 18);
+                ctx.quadraticCurveTo(48 + beltReach * 0.5, tipY - 18, 48 + beltReach, tipY);
+                ctx.stroke();
+                ctx.fillStyle = '#fbbf24';
+                ctx.fillRect(48 + beltReach - 4, tipY - 5, 10, 10);
+            });
+        }
+
+        ctx.restore();
+    };
+
+    // ⑪ 🚦 トラフィック（3色信号機怪人）
+    window.drawTrafficHead = function(ctx, x, y, scale, isHit, isAttacking, modeColor) {
+        scale = scale || 1;
+        modeColor = modeColor || 'green';
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(0, -48); ctx.lineTo(0, -64); ctx.stroke();
+        ctx.fillStyle = (modeColor === 'red' || isAttacking) ? '#ef4444' : '#38bdf8';
+        ctx.beginPath(); ctx.arc(0, -65, 4, 0, Math.PI * 2); ctx.fill();
+
+        var boxGrad = ctx.createLinearGradient(-22, -50, 22, 4);
+        boxGrad.addColorStop(0, '#334155');
+        boxGrad.addColorStop(0.5, '#1e293b');
+        boxGrad.addColorStop(1, '#09090b');
+        ctx.fillStyle = boxGrad;
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.roundRect(-20, -50, 40, 54, 7);
+        ctx.fill(); ctx.stroke();
+
+        var lights = [
+            { id: 'red',    y: -39, onCol: '#ef4444', offCol: '#450a0a', glow: '#fca5a5' },
+            { id: 'yellow', y: -23, onCol: '#facc15', offCol: '#422006', glow: '#fef08a' },
+            { id: 'green',  y: -7,  onCol: '#10b981', offCol: '#064e3b', glow: '#6ee7b7' }
+        ];
+        lights.forEach(function(lt) {
+            var isActive = (modeColor === lt.id) || (isHit && lt.id === 'red');
+            ctx.save();
+            if (isActive) {
+                ctx.shadowColor = lt.onCol;
+                ctx.shadowBlur = 14;
+            }
+            ctx.fillStyle = isActive ? lt.onCol : lt.offCol;
+            ctx.beginPath(); ctx.arc(2, lt.y, 6.8, 0, Math.PI * 2); ctx.fill();
+            if (isActive) {
+                ctx.fillStyle = lt.glow;
+                ctx.beginPath(); ctx.arc(3.5, lt.y - 1.5, 2.5, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore();
+
+            ctx.strokeStyle = '#09090b';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.arc(2, lt.y, 7.5, Math.PI * 1.1, Math.PI * 1.95);
+            ctx.stroke();
+        });
+
+        ctx.restore();
+    };
+
+    Fighter.prototype.drawTraffic = function(ctx) {
+        var t = this.animTime;
+        var curMode = this.trafficColor || 'green';
+        ctx.save();
+        if (this.state === 'ko') { ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 95); }
+
+        var hipY = (this.state === 'crouch') ? -70 : -96 + Math.sin(t * 0.1) * 2;
+        var walkSwing = (this.state === 'walk') ? Math.sin(t * 0.28) * 22 : 0;
+
+        drawRoundedLimb(ctx, -11, hipY, -18 + walkSwing, -6, 13, 10, '#334155', '#0f172a');
+        drawRoundedLimb(ctx, 11, hipY, 20 - walkSwing, -6, 13, 10, '#475569', '#0f172a');
+
+        drawRoundedLimb(ctx, -16, hipY - 54, -32, hipY - 34, 12, 10, '#475569', '#0f172a');
+        ctx.fillStyle = '#e2e8f0';
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(-42, hipY - 62, 16, 56, 4); ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = '#1e293b';
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(-25, hipY - 66, 50, 64, 9); ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(-22, hipY - 22, 44, 12);
+        ctx.fillStyle = '#09090b';
+        for (var sx = -18; sx <= 16; sx += 10) {
+            ctx.beginPath();
+            ctx.moveTo(sx, hipY - 22); ctx.lineTo(sx + 5, hipY - 22);
+            ctx.lineTo(sx + 1, hipY - 10); ctx.lineTo(sx - 4, hipY - 10);
+            ctx.closePath(); ctx.fill();
+        }
+
+        drawTrafficHead(ctx, 0, hipY - 68, 1.05, this.state === 'hit', this.state === 'attack', curMode);
+
+        var rHandX = (this.state === 'attack') ? 82 : 34;
+        var rHandY = hipY - 44;
+        drawRoundedLimb(ctx, 16, hipY - 54, rHandX, rHandY, 12, 10, '#64748b', '#0f172a');
+
+        ctx.save();
+        ctx.translate(rHandX, rHandY);
+        var spearAng = (this.state === 'attack') ? 1.35 : 0.15;
+        ctx.rotate(spearAng);
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 4.5;
+        ctx.beginPath(); ctx.moveTo(0, 28); ctx.lineTo(0, -68); ctx.stroke();
+        ctx.fillStyle = '#dc2626';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(-20, -82); ctx.lineTo(20, -82); ctx.lineTo(0, -48);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 8px "Noto Sans JP", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('止まれ', 0, -70);
+        ctx.restore();
+
+        if (this.state === 'attack' && (this.attackType === 'special' || this.attackType === 'super')) {
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(95, -220);
+            ctx.lineTo(80, -140);
+            ctx.lineTo(110, -90);
+            ctx.lineTo(90, 0);
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    };
+
+    // ⑫ 🕳️ アビス（事象の地平線・ブラックホール天体）
+    window.drawAbyssCore = function(ctx, x, y, radius, animTime, isHit, isAttacking) {
+        radius = Math.max(10, Number(radius) || 28);
+        animTime = animTime || 0;
+        ctx.save();
+        ctx.translate(x, y);
+
+        var pulse = Math.sin(animTime * 0.12) * 4;
+
+        var lensGrad = ctx.createRadialGradient(0, 0, radius * 0.6, 0, 0, radius * 1.65 + pulse);
+        lensGrad.addColorStop(0, 'rgba(0, 0, 0, 0.95)');
+        lensGrad.addColorStop(0.5, isHit ? 'rgba(239, 68, 68, 0.75)' : 'rgba(192, 38, 211, 0.65)');
+        lensGrad.addColorStop(0.78, 'rgba(56, 189, 248, 0.42)');
+        lensGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+        ctx.fillStyle = lensGrad;
+        ctx.beginPath(); ctx.arc(0, 0, radius * 1.65 + pulse, 0, Math.PI * 2); ctx.fill();
+
+        ctx.save();
+        ctx.rotate(0.32 + Math.sin(animTime * 0.04) * 0.08);
+        var jetGrad = ctx.createLinearGradient(0, -radius * 1.9, 0, radius * 1.9);
+        jetGrad.addColorStop(0, 'rgba(56, 189, 248, 0)');
+        jetGrad.addColorStop(0.5, 'rgba(232, 121, 249, 0.65)');
+        jetGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+        ctx.fillStyle = jetGrad;
+        ctx.fillRect(-radius * 0.16, -radius * 1.9, radius * 0.32, radius * 3.8);
+
+        ctx.strokeStyle = isAttacking ? '#fef08a' : '#e879f9';
+        ctx.lineWidth = radius * 0.22;
+        ctx.beginPath(); ctx.ellipse(0, 0, radius * 1.72, radius * 0.42, 0, 0, Math.PI * 2); ctx.stroke();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = radius * 0.07;
+        ctx.beginPath(); ctx.ellipse(0, 0, radius * 1.55, radius * 0.35, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+
+        ctx.fillStyle = '#000000';
+        ctx.beginPath(); ctx.arc(0, 0, radius * 0.88, 0, Math.PI * 2); ctx.fill();
+
+        ctx.strokeStyle = isAttacking ? '#38bdf8' : '#fde047';
+        ctx.lineWidth = 2.6;
+        ctx.beginPath(); ctx.arc(0, 0, radius * 0.90, 0, Math.PI * 2); ctx.stroke();
+
+        ctx.restore();
+    };
+
+    Fighter.prototype.drawAbyss = function(ctx) {
+        var t = this.animTime;
+        var floatY = Math.sin(t * 0.09) * 7;
+        ctx.save();
+        ctx.scale(1.92, 1.92);
+        var centerX = 0, centerY = -90 + floatY, coreRadius = 46;
+        if (this.state === 'crouch') centerY = -66;
+        else if (this.state === 'ko') centerY = -44;
+        else if (this.state === 'attack') {
+            var f = this.attackFrame;
+            if (this.attackType === 'light') {
+                centerX = Math.sin(Math.min(1, f / 11) * Math.PI) * 46;
+            } else if (this.attackType === 'heavy') {
+                var prog = Math.min(1, f / 17);
+                ctx.strokeStyle = 'rgba(232, 121, 249, 0.9)';
+                ctx.lineWidth = 4.5;
+                ctx.beginPath(); ctx.arc(52 + prog * 58, centerY, 24 + prog * 68, 0, Math.PI * 2); ctx.stroke();
+            } else if (this.attackType === 'special' || this.attackType === 'super') {
+                var pullR = Math.max(12, 145 - f * 4.5);
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+                ctx.lineWidth = 3.5;
+                ctx.beginPath(); ctx.arc(68, centerY, pullR, 0, Math.PI * 2); ctx.stroke();
+            }
+        }
+        drawAbyssCore(ctx, centerX, centerY, coreRadius, t, this.state === 'hit', this.state === 'attack');
+        ctx.restore();
+    };// ⑬ 🗑️ ダスト・クラーケン（医療廃棄ドラム缶に潜むバイオ実験タコ怪獣・吸盤触手・イカスミ煙幕）
+    window.drawKrakenHead = function(ctx, x, y, scale, isHit, isAttacking) {
+        scale = scale || 1;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        // 浮き上がる金属ダスト缶のフタ
+        ctx.save();
+        ctx.translate(0, isAttacking ? -46 : -38);
+        ctx.rotate(isAttacking ? -0.28 : -0.08);
+        ctx.fillStyle = '#64748b';
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(-28, -6, 56, 9, 3); ctx.fill(); ctx.stroke();
+        ctx.strokeRect(-8, -12, 16, 6);
+        ctx.restore();
+
+        // 缶の暗がりから覗くクラーケンの紅紫色の頭部と巨大単眼
+        ctx.fillStyle = '#09090b';
+        ctx.fillRect(-22, -34, 44, 24);
+
+        var octoGrad = ctx.createRadialGradient(2, -22, 2, 0, -22, 20);
+        octoGrad.addColorStop(0, '#ec4899');
+        octoGrad.addColorStop(0.6, '#9d174d');
+        octoGrad.addColorStop(1, '#4c0519');
+        ctx.fillStyle = octoGrad;
+        ctx.beginPath(); ctx.arc(0, -18, 19, Math.PI, 0); ctx.fill();
+
+        // ギョロッと光る巨大な黄色いタコ眼（横長スリット瞳孔）
+        ctx.fillStyle = isHit ? '#ef4444' : '#fde047';
+        ctx.strokeStyle = '#450a0a';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(4, -22, isAttacking ? 8.5 : 7.0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#09090b';
+        ctx.beginPath(); ctx.ellipse(5, -22, 4.5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(2.5, -24.5, 1.8, 0, Math.PI * 2); ctx.fill();
+
+        ctx.restore();
+    };
+
+    Fighter.prototype.drawKraken = function(ctx) {
+        var t = this.animTime;
+        ctx.save();
+        if (this.state === 'ko') { ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 85); }
+
+        var isHiding = (this.state === 'crouch');
+
+        // 背面のうねる吸盤付きタコ触手群（しゃがみ引きこもり時は缶の中に収納）
+        if (!isHiding) {
+            for (var i = 0; i < 4; i++) {
+                var wave = Math.sin(t * 0.16 + i * 1.4);
+                var tx = -28 + i * 18 + wave * 18;
+                var ty = -115 - (i % 2) * 20 + Math.cos(t * 0.15 + i) * 12;
+                ctx.strokeStyle = (i % 2 === 0) ? '#be185d' : '#7e22ce';
+                ctx.lineWidth = 10 - i;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(0, -72);
+                ctx.quadraticCurveTo(tx * 0.5, -95, tx, ty);
+                ctx.stroke();
+
+                ctx.fillStyle = '#fbcfe8';
+                ctx.beginPath();
+                ctx.arc(tx * 0.6, -88, 3, 0, Math.PI * 2);
+                ctx.arc(tx * 0.85, (ty - 88) * 0.5 + -88, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        if (!isHiding) {
+            drawKrakenHead(ctx, 0, -68 + Math.sin(t * 0.12) * 3, 1.05, this.state === 'hit', this.state === 'attack');
+        }
+
+        // 重厚な金属製バイオハザード・ダストドラム缶ボディ
+        var canGrad = ctx.createLinearGradient(-30, -72, 30, 0);
+        canGrad.addColorStop(0, '#94a3b8');
+        canGrad.addColorStop(0.45, '#475569');
+        canGrad.addColorStop(1, '#1e293b');
+        ctx.fillStyle = canGrad;
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.roundRect(-28, -74, 56, 70, 6);
+        ctx.fill(); ctx.stroke();
+
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        [-56, -38, -20].forEach(function(ry) {
+            ctx.beginPath(); ctx.moveTo(-28, ry); ctx.lineTo(28, ry); ctx.stroke();
+        });
+        ctx.fillStyle = '#facc15';
+        ctx.strokeStyle = '#09090b';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(0, -52); ctx.lineTo(13, -30); ctx.lineTo(-13, -30);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#09090b';
+        ctx.font = '900 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('☣', 0, -33);
+
+        if (isHiding) {
+            ctx.fillStyle = '#64748b';
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath(); ctx.roundRect(-30, -82, 60, 10, 3); ctx.fill(); ctx.stroke();
+        }
+
+        var walkWave = (this.state === 'walk') ? Math.sin(t * 0.35) * 16 : 0;
+        ctx.strokeStyle = '#be185d';
+        ctx.lineWidth = 9;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-16, -6); ctx.lineTo(-26 + walkWave, -2);
+        ctx.moveTo(16, -6);  ctx.lineTo(26 - walkWave, -2);
+        ctx.stroke();
+
+        if (this.state === 'attack') {
+            var f = this.attackFrame;
+            var reach = 55 + Math.sin(Math.min(1, f / 12) * Math.PI) * 165;
+            for (var k = 0; k < 3; k++) {
+                var sy = -62 + k * 16;
+                var ey = sy + Math.sin(f * 0.9 + k) * 24;
+                ctx.strokeStyle = k === 1 ? '#db2777' : '#9333ea';
+                ctx.lineWidth = 11 - k * 2;
+                ctx.beginPath();
+                ctx.moveTo(22, sy);
+                ctx.quadraticCurveTo(22 + reach * 0.5, sy - 22, 22 + reach, ey);
+                ctx.stroke();
+            }
+            if (this.attackType === 'special' || this.attackType === 'super') {
+                ctx.fillStyle = 'rgba(9, 10, 15, 0.88)';
+                for (var m = 0; m < 6; m++) {
+                    var ix = 40 + f * 9 + m * 22;
+                    var iy = -58 + Math.sin(f + m) * 24;
+                    ctx.beginPath(); ctx.arc(ix, iy, 12 + (m % 3) * 5, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+        }
+
+        ctx.restore();
+    };
+
+    // ⑭ 🧖‍♂️ 炎の熱波師・トトノイ親方（サウナハット・赤銅色筋肉・サウナストーン鉢・熱波タオル＆水風呂桶）
+    window.drawTotonoiHead = function(ctx, x, y, scale, isHit, isAttacking) {
+        scale = scale || 1;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        ctx.fillStyle = '#b45309';
+        ctx.fillRect(-11, -3, 22, 18);
+
+        var faceGrad = ctx.createRadialGradient(3, -22, 3, 0, -22, 26);
+        faceGrad.addColorStop(0, '#fb923c');
+        faceGrad.addColorStop(0.6, '#c2410c');
+        faceGrad.addColorStop(1, '#7c2d12');
+        ctx.fillStyle = faceGrad;
+        ctx.strokeStyle = '#431407';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.roundRect(-19, -44, 38, 46, 11); ctx.fill(); ctx.stroke();
+
+        [-5, 10].forEach(function(ex) {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(ex, -23, 4.2, isHit ? 3.8 : 2.3, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#09090b';
+            ctx.beginPath(); ctx.arc(ex + 0.8, -23, 1.9, 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.roundRect(-7, -11, 18, isAttacking ? 8 : 5, 2); ctx.fill();
+
+        var hatGrad = ctx.createLinearGradient(-22, -68, 22, -32);
+        hatGrad.addColorStop(0, '#fde047');
+        hatGrad.addColorStop(0.6, '#f97316');
+        hatGrad.addColorStop(1, '#b45309');
+        ctx.fillStyle = hatGrad;
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(-24, -32);
+        ctx.quadraticCurveTo(-22, -64, 0, -66);
+        ctx.quadraticCurveTo(22, -64, 24, -32);
+        ctx.quadraticCurveTo(0, -37, -24, -32);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, -68, 4, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 8.5px "Noto Sans JP", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('熱波', 0, -43);
+
+        ctx.restore();
+    };
+
+    Fighter.prototype.drawTotonoi = function(ctx) {
+        var t = this.animTime;
+        var breath = Math.sin(t * 0.14) * 2.2;
+        ctx.save();
+        if (this.state === 'ko') { ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 95); }
+
+        var hipY = (this.state === 'crouch') ? -68 : -94 + breath * 0.5;
+        var walkSwing = (this.state === 'walk') ? Math.sin(t * 0.3) * 24 : 0;
+
+        ctx.fillStyle = '#27272a';
+        ctx.strokeStyle = '#52525b';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(-48, -24, 28, 22, 4); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#ef4444';
+        [-42, -34, -27].forEach(function(sx) {
+            ctx.beginPath(); ctx.arc(sx, -26, 4.5, 0, Math.PI * 2); ctx.fill();
+        });
+
+        var skin1 = '#ea580c', skin2 = '#9a3412', outline = '#431407';
+        drawRoundedLimb(ctx, -10, hipY, -18 + walkSwing, -4, 14, 10, skin2, outline);
+        drawRoundedLimb(ctx, 10, hipY, 20 - walkSwing, -4, 14, 10, skin1, outline);
+
+        drawRoundedLimb(ctx, -14, hipY - 52, -28, hipY - 32, 12, 10, skin2, outline);
+        ctx.fillStyle = '#fde047';
+        ctx.strokeStyle = '#92400e';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.roundRect(-40, hipY - 36, 20, 18, 3); ctx.fill(); ctx.stroke();
+
+        ctx.save();
+        ctx.translate(0, hipY);
+        var chestGrad = ctx.createLinearGradient(-24, -66, 24, 0);
+        chestGrad.addColorStop(0, '#fb923c');
+        chestGrad.addColorStop(0.55, '#c2410c');
+        chestGrad.addColorStop(1, '#7c2d12');
+        ctx.fillStyle = chestGrad;
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.roundRect(-24, -64, 48, 56, 11); ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#94a3b8';
+        ctx.beginPath(); ctx.roundRect(-25, -14, 50, 26, 4); ctx.fill(); ctx.stroke();
+
+        drawTotonoiHead(ctx, 2, -68, 1.0, this.state === 'hit', this.state === 'attack');
+        ctx.restore();
+
+        var rHandX = (this.state === 'attack') ? 76 : 36;
+        var rHandY = hipY - 48;
+        drawRoundedLimb(ctx, 14, hipY - 52, rHandX, rHandY, 13, 10, skin1, outline);
+
+        if (this.state === 'attack') {
+            var f = this.attackFrame;
+            if (this.attackType === 'special') {
+                var waterGrad = ctx.createLinearGradient(rHandX, rHandY, rHandX + 165, rHandY + 20);
+                waterGrad.addColorStop(0, '#ffffff');
+                waterGrad.addColorStop(0.4, '#38bdf8');
+                waterGrad.addColorStop(1, 'rgba(2, 132, 199, 0.1)');
+                ctx.fillStyle = waterGrad;
+                ctx.beginPath();
+                ctx.moveTo(rHandX, rHandY - 12);
+                ctx.lineTo(rHandX + 165, rHandY - 45);
+                ctx.lineTo(rHandX + 165, rHandY + 35);
+                ctx.lineTo(rHandX, rHandY + 12);
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                ctx.save();
+                ctx.translate(rHandX + 24, rHandY);
+                ctx.rotate(f * 0.85);
+                ctx.strokeStyle = '#f97316';
+                ctx.fillStyle = 'rgba(254, 240, 138, 0.75)';
+                ctx.lineWidth = 6;
+                ctx.beginPath(); ctx.ellipse(0, 0, 56, 26, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.restore();
+            }
+        } else {
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.beginPath(); ctx.roundRect(rHandX - 4, rHandY - 6, 28, 12, 4); ctx.fill(); ctx.stroke();
+        }
+
+        ctx.restore();
+    };
+
+    // ⑮ 🩻 Dr.レントゲン（緑発光ゴーグル・鉛防護エプロン・胸部X線フィルム盾・肩載せ高電圧X線管砲）
+    window.drawRoentgenHead = function(ctx, x, y, scale, isHit, isAttacking) {
+        scale = scale || 1;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(-10, -3, 20, 16);
+
+        ctx.fillStyle = '#1e293b';
+        ctx.strokeStyle = '#22d3ee';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.roundRect(-19, -46, 38, 46, 12); ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = '#64748b';
+        ctx.beginPath(); ctx.roundRect(-15, -18, 32, 16, 4); ctx.fill(); ctx.stroke();
+
+        ctx.save();
+        ctx.shadowColor = '#22d3ee';
+        ctx.shadowBlur = isAttacking ? 16 : 8;
+        ctx.fillStyle = isHit ? '#ef4444' : '#06b6d4';
+        ctx.strokeStyle = '#ecfeff';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.roundRect(-14, -33, 13, 10, 3);
+        ctx.roundRect(3, -33, 13, 10, 3);
+        ctx.fill(); ctx.stroke();
+        ctx.restore();
+
+        ctx.restore();
+    };
+
+    Fighter.prototype.drawRoentgen = function(ctx) {
+        var t = this.animTime;
+        ctx.save();
+        if (this.state === 'ko') { ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 95); }
+
+        var hipY = (this.state === 'crouch') ? -68 : -94 + Math.sin(t * 0.1) * 2;
+        var walkSwing = (this.state === 'walk') ? Math.sin(t * 0.28) * 22 : 0;
+
+        drawRoundedLimb(ctx, -10, hipY, -18 + walkSwing, -5, 13, 10, '#1e293b', '#09090b');
+        drawRoundedLimb(ctx, 10, hipY, 20 - walkSwing, -5, 13, 10, '#334155', '#09090b');
+
+        drawRoundedLimb(ctx, -14, hipY - 52, -28, hipY - 36, 11, 9, '#475569', '#0f172a');
+        ctx.fillStyle = '#083344';
+        ctx.strokeStyle = '#22d3ee';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath(); ctx.roundRect(-42, hipY - 62, 22, 48, 4); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = 'rgba(207, 250, 254, 0.8)';
+        ctx.lineWidth = 1.6;
+        for (var fy = hipY - 54; fy <= hipY - 24; fy += 7) {
+            ctx.beginPath(); ctx.moveTo(-38, fy); ctx.lineTo(-24, fy); ctx.stroke();
+        }
+
+        var leadGrad = ctx.createLinearGradient(-24, -66, 24, 15);
+        leadGrad.addColorStop(0, '#64748b');
+        leadGrad.addColorStop(0.5, '#334155');
+        leadGrad.addColorStop(1, '#1e293b');
+        ctx.fillStyle = leadGrad;
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.roundRect(-24, hipY - 66, 48, 74, 8); ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath(); ctx.arc(2, hipY - 36, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#09090b';
+        ctx.font = '900 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('☢', 2, hipY - 32);
+
+        drawRoentgenHead(ctx, 2, hipY - 68, 1.0, this.state === 'hit', this.state === 'attack');
+
+        var rHandX = (this.state === 'attack') ? 58 : 34;
+        var rHandY = hipY - 48;
+        drawRoundedLimb(ctx, 14, hipY - 52, rHandX, rHandY, 12, 10, '#475569', '#0f172a');
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.strokeStyle = '#0891b2';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(rHandX - 10, rHandY - 14, 42, 22, 6); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#22d3ee';
+        ctx.beginPath(); ctx.arc(rHandX + 32, rHandY - 3, 8, -Math.PI * 0.5, Math.PI * 0.5); ctx.fill();
+
+        if (this.state === 'attack') {
+            var beamLen = (this.attackType === 'special' || this.attackType === 'super') ? 210 : 135;
+            var bGrad = ctx.createLinearGradient(rHandX + 32, rHandY, rHandX + 32 + beamLen, rHandY);
+            bGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+            bGrad.addColorStop(0.35, 'rgba(34, 211, 238, 0.78)');
+            bGrad.addColorStop(1, 'rgba(6, 182, 212, 0)');
+            ctx.fillStyle = bGrad;
+            ctx.beginPath();
+            ctx.moveTo(rHandX + 32, rHandY - 10);
+            ctx.lineTo(rHandX + 32 + beamLen, rHandY - 46);
+            ctx.lineTo(rHandX + 32 + beamLen, rHandY + 40);
+            ctx.lineTo(rHandX + 32, rHandY + 6);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        ctx.restore();
+    };
+
+    // ⑯ 🎰 スロット・ジャック（黄金ネオンの暴走スロットマシン怪人・リアルタイム3連リール・巨大レバー）
+    window.drawSlotJackHead = function(ctx, x, y, scale, isHit, isAttacking) {
+        scale = scale || 1;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        var lampOn = (frameCounter % 8 < 4) || isAttacking;
+        ctx.fillStyle = lampOn ? '#ef4444' : '#991b1b';
+        ctx.strokeStyle = '#fef08a';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.roundRect(-12, -58, 24, 12, [8, 8, 0, 0]); ctx.fill(); ctx.stroke();
+
+        var archGrad = ctx.createLinearGradient(-28, -46, 28, 0);
+        archGrad.addColorStop(0, '#fef08a');
+        archGrad.addColorStop(0.5, '#eab308');
+        archGrad.addColorStop(1, '#854d0e');
+        ctx.fillStyle = archGrad;
+        ctx.strokeStyle = '#422006';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-26, -46, 52, 44, [20, 20, 5, 5]);
+        ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = '#09090b';
+        ctx.fillRect(-20, -34, 40, 24);
+        ctx.fillStyle = isHit ? '#ef4444' : '#fde047';
+        ctx.font = '900 10px "Black Ops One", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(isAttacking ? 'FEVER!!' : '777 JACK', 0, -18);
+
+        ctx.restore();
+    };
+
+    Fighter.prototype.drawSlotJack = function(ctx) {
+        var t = this.animTime;
+        var isFever = (this.slotFeverTimer || 0) > 0;
+        ctx.save();
+        if (this.state === 'ko') { ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 95); }
+
+        var hipY = (this.state === 'crouch') ? -68 : -92 + Math.sin(t * 0.12) * 2;
+        var walkSwing = (this.state === 'walk') ? Math.sin(t * 0.3) * 20 : 0;
+
+        drawRoundedLimb(ctx, -12, hipY, -18 + walkSwing, -5, 13, 10, '#ca8a04', '#422006');
+        drawRoundedLimb(ctx, 12, hipY, 20 - walkSwing, -5, 13, 10, '#eab308', '#422006');
+
+        var bodyGrad = ctx.createLinearGradient(-30, hipY - 72, 30, hipY + 10);
+        bodyGrad.addColorStop(0, isFever ? '#f43f5e' : '#fef08a');
+        bodyGrad.addColorStop(0.5, isFever ? '#a855f7' : '#ca8a04');
+        bodyGrad.addColorStop(1, '#713f12');
+        ctx.fillStyle = bodyGrad;
+        ctx.strokeStyle = isFever ? '#ffffff' : '#422006';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath(); ctx.roundRect(-28, hipY - 70, 56, 74, 8); ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#09090b';
+        ctx.lineWidth = 2;
+        ctx.fillRect(-23, hipY - 56, 46, 32);
+        ctx.strokeRect(-23, hipY - 56, 46, 32);
+        ctx.beginPath();
+        ctx.moveTo(-8, hipY - 56); ctx.lineTo(-8, hipY - 24);
+        ctx.moveTo(8, hipY - 56);  ctx.lineTo(8, hipY - 24);
+        ctx.stroke();
+
+        var reels = this.slotReels || ['7', '7', '7'];
+        ctx.font = '900 13px "Black Ops One", sans-serif';
+        ctx.textAlign = 'center';
+        [-15.5, 0, 15.5].forEach(function(rx, idx) {
+            var sym = reels[idx];
+            ctx.fillStyle = sym === '7' ? '#dc2626' : '#09090b';
+            ctx.fillText(sym, rx, hipY - 35);
+        });
+
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(-22, hipY - 14, 44, 10);
+
+        drawSlotJackHead(ctx, 0, hipY - 70, 1.0, this.state === 'hit', this.state === 'attack' || isFever);
+
+        var leverPull = (this.state === 'attack') ? 0.95 : -0.35;
+        ctx.save();
+        ctx.translate(28, hipY - 42);
+        ctx.rotate(leverPull);
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(28, -42); ctx.stroke();
+        ctx.fillStyle = '#dc2626';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(28, -42, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.restore();
+
+        if (this.state === 'attack') {
+            var f = this.attackFrame;
+            for (var c = 0; c < 6; c++) {
+                var cx = 36 + f * 12 + c * 22;
+                var cy = hipY - 40 + Math.sin(f + c * 1.7) * 20;
+                ctx.fillStyle = '#facc15';
+                ctx.strokeStyle = '#854d0e';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#713f12';
+                ctx.font = '900 8px sans-serif';
+                ctx.fillText('$', cx, cy + 3);
+            }
+        }
+
+        ctx.restore();
+    };
+
+    // ⑰ ☀️ ヘリオス（サバイバル50戦目ボス／恒星プロミネンス・超新星太陽）
+    window.drawHeliosCore = function(ctx, x, y, radius, animTime, isHit, isAttacking) {
+        radius = Math.max(10, Number(radius) || 28);
+        animTime = animTime || 0;
+        ctx.save();
+        ctx.translate(x, y);
+
+        var pulse = Math.sin(animTime * 0.15) * 5;
+
+        var coronaGrad = ctx.createRadialGradient(0, 0, radius * 0.5, 0, 0, radius * 1.85 + pulse);
+        coronaGrad.addColorStop(0, '#ffffff');
+        coronaGrad.addColorStop(0.35, 'rgba(254, 240, 138, 0.92)');
+        coronaGrad.addColorStop(0.68, isHit ? 'rgba(239, 68, 68, 0.75)' : 'rgba(249, 115, 22, 0.55)');
+        coronaGrad.addColorStop(1, 'rgba(180, 83, 9, 0)');
+        ctx.fillStyle = coronaGrad;
+        ctx.beginPath(); ctx.arc(0, 0, radius * 1.85 + pulse, 0, Math.PI * 2); ctx.fill();
+
+        for (var i = 0; i < 12; i++) {
+            var ang = (i / 12) * Math.PI * 2 + animTime * 0.025;
+            var flareLen = radius * (1.28 + Math.sin(animTime * 0.14 + i * 1.7) * 0.25);
+            ctx.save();
+            ctx.rotate(ang);
+            ctx.strokeStyle = (i % 2 === 0) ? '#fde047' : '#ef4444';
+            ctx.lineWidth = radius * 0.12;
+            ctx.beginPath();
+            ctx.arc(radius * 0.78, 0, flareLen - radius * 0.75, -Math.PI * 0.5, Math.PI * 0.5);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        var sunGrad = ctx.createRadialGradient(-radius * 0.25, -radius * 0.25, radius * 0.1, 0, 0, radius);
+        sunGrad.addColorStop(0, '#ffffff');
+        sunGrad.addColorStop(0.35, '#fef08a');
+        sunGrad.addColorStop(0.75, '#f97316');
+        sunGrad.addColorStop(1, '#b91c1c');
+        ctx.fillStyle = sunGrad;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = 'rgba(69, 10, 10, 0.75)';
+        ctx.beginPath();
+        ctx.ellipse(radius * 0.28, -radius * 0.18, radius * 0.16, radius * 0.10, 0.3, 0, Math.PI * 2);
+        ctx.ellipse(-radius * 0.22, radius * 0.25, radius * 0.12, radius * 0.08, -0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    };
+
+    Fighter.prototype.drawHelios = function(ctx) {
+        var t = this.animTime;
+        var floatY = Math.sin(t * 0.1) * 7;
+        ctx.save();
+        ctx.scale(1.96, 1.96);
+        var centerX = 0, centerY = -92 + floatY, sunRadius = 48;
+        if (this.state === 'crouch') centerY = -68;
+        else if (this.state === 'ko') centerY = -44;
+        else if (this.state === 'attack') {
+            var f = this.attackFrame;
+            if (this.attackType === 'light') {
+                centerX = Math.sin(Math.min(1, f / 11) * Math.PI) * 48;
+            } else if (this.attackType === 'heavy' || this.attackType === 'special' || this.attackType === 'super') {
+                var expR = 35 + f * 6.5;
+                var fGrad = ctx.createRadialGradient(55, centerY, 10, 55, centerY, expR);
+                fGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+                fGrad.addColorStop(0.5, 'rgba(250, 204, 21, 0.75)');
+                fGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+                ctx.fillStyle = fGrad;
+                ctx.beginPath(); ctx.arc(55, centerY, expR, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+        drawHeliosCore(ctx, centerX, centerY, sunRadius, t, this.state === 'hit', this.state === 'attack');
+        ctx.restore();
+    };
+
+    // 超必殺技カットイン＆プレビュー用ヘッド描画フック（全30キャラ対応）
     var origDrawRealisticHead = drawRealisticHead;
     drawRealisticHead = function(ctx, id, x, y, scale, isHit) {
         scale = scale || 1;
+        if (id === 'gensan')    { drawGensanHead(ctx, x, y, scale, isHit, true); return; }
+        if (id === 'kraken')    { drawKrakenHead(ctx, x, y, scale, isHit, true); return; }
+        if (id === 'drskull')   { drawDrSkullHead(ctx, x, y, scale, isHit, true); return; }
+        if (id === 'totonoi')   { drawTotonoiHead(ctx, x, y, scale, isHit, true); return; }
+        if (id === 'stretcher') { drawStretcherHead(ctx, x, y, scale, isHit, true); return; }
+        if (id === 'roentgen')  { drawRoentgenHead(ctx, x, y, scale, isHit, true); return; }
+        if (id === 'traffic')   { drawTrafficHead(ctx, x, y, scale, isHit, true, 'red'); return; }
+        if (id === 'slotjack')  { drawSlotJackHead(ctx, x, y, scale, isHit, true); return; }
+        if (id === 'abyss')     { drawAbyssCore(ctx, x, y - 22 * scale, 28 * scale, frameCounter, isHit, true); return; }
+        if (id === 'helios')    { drawHeliosCore(ctx, x, y - 22 * scale, 28 * scale, frameCounter, isHit, true); return; }
         if (id === 'phantom')   { drawPhantomHead(ctx, x, y, scale, isHit, true); return; }
         if (id === 'chronos')   { drawChronosDialHead(ctx, x, y, scale, isHit, true); return; }
         if (id === 'pulserobo') { drawPulseRoboHead(ctx, x, y, scale, isHit, true); return; }
@@ -9718,11 +11348,36 @@ window.addEventListener('DOMContentLoaded', () => {
     var venusDelayedBombs = [];
     var venusVisualExplosions = [];
     var doppelShadowQueue = [];
+    var gensanChiliPools = [];
 
-    // 5. Fighter.prototype.draw 拡張
+    // 6. Fighter.prototype.draw 拡張（全30キャラ＋固有ステータス・デバフ視覚表示）
     var origFighterDraw = Fighter.prototype.draw;
     Fighter.prototype.draw = function(ctx) {
+        if (this.isP1 && gensanChiliPools.length > 0) {
+            for (var pIdx = 0; pIdx < gensanChiliPools.length; pIdx++) {
+                var pool = gensanChiliPools[pIdx];
+                ctx.save();
+                var oilGrad = ctx.createRadialGradient(pool.x, GROUND_Y, 6, pool.x, GROUND_Y, pool.radius);
+                oilGrad.addColorStop(0, 'rgba(239, 68, 68, 0.88)');
+                oilGrad.addColorStop(0.65, 'rgba(234, 88, 12, 0.72)');
+                oilGrad.addColorStop(1, 'rgba(153, 27, 27, 0)');
+                ctx.fillStyle = oilGrad;
+                ctx.beginPath();
+                ctx.ellipse(pool.x, GROUND_Y + 2, pool.radius, 11, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
         var customDrawMap = {
+            gensan:    this.drawGensan,
+            kraken:    this.drawKraken,
+            drskull:   this.drawDrSkull,
+            totonoi:   this.drawTotonoi,
+            stretcher: this.drawStretcher,
+            roentgen:  this.drawRoentgen,
+            traffic:   this.drawTraffic,
+            slotjack:  this.drawSlotJack,
             chronos:   this.drawChronos,
             pulserobo: this.drawPulseRobo,
             vending:   this.drawVending,
@@ -9744,10 +11399,12 @@ window.addEventListener('DOMContentLoaded', () => {
                 this.id = 'hanako'; this.drawHanako = this.drawPhantom;
                 try { origFighterDraw.call(this, ctx); } finally { this.id = 'phantom'; this.drawHanako = origH; }
             }
-        } else if (this.id === 'venus') {
+        } else if (this.id === 'venus' || this.id === 'abyss' || this.id === 'helios') {
+            var savedPlanetId = this.id;
             var origM = this.drawMaou;
-            this.id = 'maou'; this.drawMaou = this.drawVenus;
-            try { origFighterDraw.call(this, ctx); } finally { this.id = 'venus'; this.drawMaou = origM; }
+            this.id = 'maou';
+            this.drawMaou = (savedPlanetId === 'helios') ? this.drawHelios : ((savedPlanetId === 'abyss') ? this.drawAbyss : this.drawVenus);
+            try { origFighterDraw.call(this, ctx); } finally { this.id = savedPlanetId; this.drawMaou = origM; }
         } else if (customDrawMap[this.id]) {
             var savedId = this.id;
             var origH2 = this.drawHanako;
@@ -9757,7 +11414,40 @@ window.addEventListener('DOMContentLoaded', () => {
             origFighterDraw.call(this, ctx);
         }
 
-        if (this.timeStopTimer > 0 || this.freezeTimer > 0) {
+        if (this.id === 'traffic' && this.state !== 'ko' && gameState === 'playing') {
+            ctx.save();
+            ctx.translate(this.x, Math.min(GROUND_Y, this.y) - 195);
+            var mode = this.trafficColor || 'green';
+            var badgeCol = mode === 'red' ? '#ef4444' : (mode === 'yellow' ? '#facc15' : '#10b981');
+            var badgeTxt = mode === 'red' ? '🔴赤信号:動くと違反雷撃!' : (mode === 'yellow' ? '🟡黄信号:ゲージ加速中' : '🟢青信号:スピードUP');
+            ctx.fillStyle = 'rgba(9, 10, 15, 0.88)';
+            ctx.strokeStyle = badgeCol;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath(); ctx.roundRect(-68, -12, 136, 17, 6); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = badgeCol;
+            ctx.font = '900 9.5px "Noto Sans JP", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(badgeTxt, 0, 0);
+            ctx.restore();
+        }
+
+        if (this.id === 'slotjack' && this.state !== 'ko' && gameState === 'playing') {
+            ctx.save();
+            ctx.translate(this.x, Math.min(GROUND_Y, this.y) - 195);
+            var isFev = (this.slotFeverTimer || 0) > 0;
+            var rArr = this.slotReels || ['7', '7', '7'];
+            ctx.fillStyle = 'rgba(9, 10, 15, 0.9)';
+            ctx.strokeStyle = isFev ? '#f43f5e' : '#facc15';
+            ctx.lineWidth = 1.6;
+            ctx.beginPath(); ctx.roundRect(-66, -12, 132, 17, 6); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = isFev ? '#fde047' : '#ffffff';
+            ctx.font = '900 9.5px "Noto Sans JP", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(isFev ? '🎰 777 FEVER!! (攻撃1.6倍)' : ('🎰出目: [' + rArr.join('|') + ']'), 0, 0);
+            ctx.restore();
+        }
+
+        if (this.timeStopTimer > 0 || this.freezeTimer > 0 || this.zeroGravityTimer > 0 || this.xrayExposedTimer > 0 || this.inkBlindTimer > 0 || (this.saunaHeatStacks || 0) > 0) {
             ctx.save();
             ctx.translate(this.x, Math.min(GROUND_Y, this.y));
             if (this.freezeTimer > 0) {
@@ -9772,6 +11462,34 @@ window.addEventListener('DOMContentLoaded', () => {
                 ctx.strokeStyle = '#fde047';
                 ctx.lineWidth = 3.5;
                 ctx.beginPath(); ctx.arc(0, -110, 56, 0, Math.PI * 2); ctx.stroke();
+            }
+            if (this.zeroGravityTimer > 0) {
+                ctx.strokeStyle = '#e879f9';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([6, 4]);
+                ctx.beginPath(); ctx.ellipse(0, -90, 54, 82, 0, 0, Math.PI * 2); ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            if (this.xrayExposedTimer > 0) {
+                ctx.strokeStyle = '#22d3ee';
+                ctx.lineWidth = 2.5;
+                ctx.strokeRect(-28, -155, 56, 130);
+                for (var ry = -125; ry <= -75; ry += 12) {
+                    ctx.beginPath(); ctx.moveTo(-18, ry); ctx.lineTo(18, ry); ctx.stroke();
+                }
+            }
+            if (this.inkBlindTimer > 0) {
+                ctx.fillStyle = 'rgba(9, 10, 15, 0.78)';
+                ctx.beginPath();
+                ctx.arc(-12, -125, 16, 0, Math.PI * 2);
+                ctx.arc(14, -110, 14, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            if ((this.saunaHeatStacks || 0) > 0) {
+                ctx.fillStyle = '#fb923c';
+                ctx.font = '900 10px "Noto Sans JP", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('♨️熱波 x' + this.saunaHeatStacks + (this.saunaHeatStacks >= 2 ? ' (水風呂で整い気絶!)' : ''), 0, -172);
             }
             ctx.restore();
         }
@@ -9799,40 +11517,58 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 6. ステータス計算（チャレンジでは難易度による敵ステータス変動をなくし、サバイバルでのみ難易度を反映）
+    // 7. ステータス計算（★サバイバル道中と20/30/40/50戦目ボスの逆転現象を完全解消！）
     var origComputeFighterCombatStats = computeFighterCombatStats;
     computeFighterCombatStats = function(id, isP1) {
+        cpuDifficulty = 'normal';
         var upg = charUpgrades[id] || { atk: 1, hp: 1, mtr: 1 };
+        var customFourteenList = [
+            'gensan', 'kraken', 'drskull', 'totonoi', 'stretcher',
+            'roentgen', 'traffic', 'slotjack', 'phantom', 'chronos',
+            'pulserobo', 'vending', 'doppel', 'gigapump'
+        ];
+        var vsHpMap  = {
+            gensan: 1260, kraken: 1300, drskull: 1180, totonoi: 1320, stretcher: 1320,
+            roentgen: 1280, traffic: 1360, slotjack: 1340, phantom: 1220, chronos: 1280,
+            pulserobo: 1180, vending: 1420, doppel: 1240, gigapump: 1460
+        };
+        var vsAtkMap = {
+            gensan: 1.18, kraken: 1.18, drskull: 1.16, totonoi: 1.20, stretcher: 1.20,
+            roentgen: 1.19, traffic: 1.21, slotjack: 1.22, phantom: 1.20, chronos: 1.22,
+            pulserobo: 1.18, vending: 1.25, doppel: 1.15, gigapump: 1.26
+        };
 
         if (gameMode === 'vs') {
-            if (id === 'venus') return { maxHp: 3000, atkMult: 1.88, mtrMult: 1.0, recLv: 10 };
-            if (['phantom', 'chronos', 'pulserobo', 'vending', 'doppel', 'gigapump'].includes(id)) {
-                var vsHpMap  = { phantom: 1220, chronos: 1280, pulserobo: 1180, vending: 1420, doppel: 1240, gigapump: 1460 };
-                var vsAtkMap = { phantom: 1.20, chronos: 1.22, pulserobo: 1.18, vending: 1.25, doppel: 1.15, gigapump: 1.26 };
+            if (id === 'helios') return { maxHp: 3600, atkMult: 2.10, mtrMult: 1.0, recLv: 10 };
+            if (id === 'abyss')  return { maxHp: 3300, atkMult: 1.98, mtrMult: 1.0, recLv: 10 };
+            if (id === 'venus')  return { maxHp: 3000, atkMult: 1.88, mtrMult: 1.0, recLv: 10 };
+            if (customFourteenList.includes(id)) {
                 return { maxHp: vsHpMap[id], atkMult: vsAtkMap[id], mtrMult: 1.0, recLv: 1 };
             }
             return origComputeFighterCombatStats(id, isP1);
         }
 
         if (isP1) {
+            if (id === 'helios') {
+                return { maxHp: 8200 + (upg.hp - 1) * 260, atkMult: Number((4.25 + (upg.atk - 1) * 0.14).toFixed(2)), mtrMult: Number((1.60 + (upg.mtr - 1) * 0.10).toFixed(2)), recLv: MAX_UPG_LV };
+            }
+            if (id === 'abyss') {
+                return { maxHp: 7200 + (upg.hp - 1) * 240, atkMult: Number((3.85 + (upg.atk - 1) * 0.13).toFixed(2)), mtrMult: Number((1.50 + (upg.mtr - 1) * 0.10).toFixed(2)), recLv: MAX_UPG_LV };
+            }
             if (id === 'venus') {
                 return { maxHp: 6340 + (upg.hp - 1) * 220, atkMult: Number((3.47 + (upg.atk - 1) * 0.12).toFixed(2)), mtrMult: Number((1.40 + (upg.mtr - 1) * 0.09).toFixed(2)), recLv: MAX_UPG_LV };
             }
-            if (['phantom', 'chronos', 'pulserobo', 'vending', 'doppel', 'gigapump'].includes(id)) {
-                var baseHpMap  = { phantom: 1220, chronos: 1280, pulserobo: 1180, vending: 1420, doppel: 1240, gigapump: 1460 };
-                var baseAtkMap = { phantom: 1.20, chronos: 1.22, pulserobo: 1.18, vending: 1.25, doppel: 1.15, gigapump: 1.26 };
+            if (customFourteenList.includes(id)) {
                 return {
-                    maxHp: baseHpMap[id] + (upg.hp - 1) * 75,
-                    atkMult: Number((baseAtkMap[id] + (upg.atk - 1) * 0.07).toFixed(2)),
+                    maxHp: vsHpMap[id] + (upg.hp - 1) * 75,
+                    atkMult: Number((vsAtkMap[id] + (upg.atk - 1) * 0.07).toFixed(2)),
                     mtrMult: Number((1.15 + (upg.mtr - 1) * 0.08).toFixed(2)),
                     recLv: Math.round((upg.atk + upg.hp + upg.mtr) / 3)
                 };
             }
             return origComputeFighterCombatStats(id, true);
         } else {
-            // CPU側ステータス
             if (gameMode === 'challenge') {
-                // チャレンジモードは難易度選択なし（一定のステージスケーリング）
                 var st = CHALLENGE_STAGE_SCALING[Math.min(challengeStageIndex, CHALLENGE_STAGE_SCALING.length - 1)];
                 return {
                     maxHp: st.hp,
@@ -9841,27 +11577,85 @@ window.addEventListener('DOMContentLoaded', () => {
                     recLv: st.recLv
                 };
             } else {
-                // サバイバルモード：選択中の難易度（入門 / 標準 / 激闘）を敵の強さに反映
-                var diffMult = cpuDifficulty === 'easy' ? 0.85 : (cpuDifficulty === 'hard' ? 1.15 : 1.0);
-                if (id === 'venus') {
-                    return { maxHp: Math.round(5200 * diffMult), atkMult: Number((2.85 * diffMult).toFixed(2)), mtrMult: 1.5, recLv: 20 };
+                // ★サバイバルモード：道中の雑魚敵がボスより強くなる逆転現象を解消し、Lv.20強化キャラで50戦目ヘリオスまで挑戦可能な適正スケーリング！
+                var streak = survivalStreak;
+                if (id === 'maou') {
+                    return { maxHp: 3800, atkMult: 2.35, mtrMult: 1.40, recLv: 15 };
                 }
-                var baseStats = origComputeFighterCombatStats(id, false);
+                if (id === 'venus') {
+                    return { maxHp: 5200, atkMult: 2.85, mtrMult: 1.55, recLv: 18 };
+                }
+                if (id === 'abyss') {
+                    return { maxHp: 6800, atkMult: 3.35, mtrMult: 1.70, recLv: 20 };
+                }
+                if (id === 'helios') {
+                    return { maxHp: 8500, atkMult: 3.80, mtrMult: 1.85, recLv: 20 };
+                }
+                var baseHp = id === 'dragon' ? 1250 : (id === 'baby' ? 1150 : (id === 'bacteria' ? 1120 : 1000));
+                var baseAtk = id === 'bacteria' ? 0.82 : 0.95;
                 return {
-                    maxHp: Math.round(baseStats.maxHp * diffMult),
-                    atkMult: Number((baseStats.atkMult * diffMult).toFixed(2)),
-                    mtrMult: baseStats.mtrMult,
-                    recLv: baseStats.recLv
+                    maxHp: Math.round(baseHp + streak * 65),
+                    atkMult: Number((baseAtk + streak * 0.045).toFixed(2)),
+                    mtrMult: Number((1.0 + streak * 0.025).toFixed(2)),
+                    recLv: Math.min(20, 1 + Math.floor(streak * 0.45))
                 };
             }
         }
     };
 
-    // 7. 技データの定義（元の技を100%維持）
+    // 8. 全追加キャラクター17体の技データ定義
     var origGetMoveData = Fighter.prototype.getMoveData;
     Fighter.prototype.getMoveData = function(type) {
         var id = this.id;
         var customMoves = {
+            gensan: {
+                light:   { name: 'おたま連打＆熱々スープ浴びせ', startup: 4, activeEnd: 10, totalFrames: 16, damage: 55, range: 175, lungeSpeed: 5.8, hitstun: 16, pushback: 10, meterGain: 12 },
+                heavy:   { name: '灼熱・大中華鍋フルスイング', startup: 7, activeEnd: 16, totalFrames: 24, damage: 122, range: 210, lungeSpeed: 7.2, hitstun: 22, pushback: 17, meterGain: 19, isFlameWok: true },
+                special: { name: '激辛ラー油撒き＆大火柱フランベ', startup: 11, activeEnd: 22, totalFrames: 34, damage: 140, range: 235, lungeSpeed: 6.8, hitstun: 26, pushback: 18, meterGain: 25, isGuardBreak: true, isFlameWok: true },
+                super:   { name: '地獄の替え玉・屋台ごと大噴火', startup: 5, activeEnd: 30, totalFrames: 42, damage: 310, range: 270, lungeSpeed: 9.8, hitstun: 36, pushback: 24, meterGain: 0, isSuper: true, isFlameWok: true }
+            },
+            kraken: {
+                light:   { name: '吸盤タコ触手ウィップ', startup: 4, activeEnd: 11, totalFrames: 16, damage: 54, range: 205, lungeSpeed: 4.8, hitstun: 16, pushback: 11, meterGain: 12 },
+                heavy:   { name: 'ドラム缶スピン大強打', startup: 7, activeEnd: 16, totalFrames: 24, damage: 120, range: 215, lungeSpeed: 7.4, hitstun: 22, pushback: 18, meterGain: 19 },
+                special: { name: 'イカスミ粘液ブラインド噴射', startup: 11, activeEnd: 22, totalFrames: 34, damage: 136, range: 245, lungeSpeed: 6.0, hitstun: 26, pushback: 17, meterGain: 25, isGuardBreak: true, isKrakenInk: true },
+                super:   { name: '深海クラーケン・6本触手大暴れ', startup: 5, activeEnd: 30, totalFrames: 42, damage: 308, range: 275, lungeSpeed: 9.5, hitstun: 36, pushback: 25, meterGain: 0, isSuper: true, isKrakenInk: true }
+            },
+            drskull: {
+                light:   { name: '頭蓋骨ヘッドショット投げ', startup: 4, activeEnd: 11, totalFrames: 16, damage: 54, range: 210, lungeSpeed: 4.2, hitstun: 16, pushback: 10, meterGain: 12 },
+                heavy:   { name: '大腿骨ボーンクラブ強打', startup: 7, activeEnd: 16, totalFrames: 24, damage: 118, range: 205, lungeSpeed: 7.0, hitstun: 21, pushback: 16, meterGain: 19 },
+                special: { name: '肋骨ブーメラン挟み撃ち', startup: 11, activeEnd: 23, totalFrames: 34, damage: 138, range: 245, lungeSpeed: 6.0, hitstun: 25, pushback: 16, meterGain: 25, isGuardBreak: true },
+                super:   { name: '解剖学・ボーンストーム大竜巻', startup: 5, activeEnd: 30, totalFrames: 42, damage: 305, range: 275, lungeSpeed: 9.5, hitstun: 36, pushback: 24, meterGain: 0, isSuper: true }
+            },
+            totonoi: {
+                light:   { name: '熱波アウフグース旋風', startup: 4, activeEnd: 10, totalFrames: 16, damage: 55, range: 190, lungeSpeed: 6.0, hitstun: 16, pushback: 10, meterGain: 12, isSaunaHeat: true },
+                heavy:   { name: '灼熱ロウリュ蒸気波', startup: 7, activeEnd: 16, totalFrames: 24, damage: 122, range: 220, lungeSpeed: 7.2, hitstun: 22, pushback: 17, meterGain: 19, isSaunaHeat: true },
+                special: { name: '極冷・水風呂バケツぶっかけ', startup: 11, activeEnd: 22, totalFrames: 34, damage: 140, range: 240, lungeSpeed: 6.8, hitstun: 26, pushback: 18, meterGain: 25, isGuardBreak: true, isColdBath: true },
+                super:   { name: 'サウナトランス・整い大昇天乱舞', startup: 5, activeEnd: 30, totalFrames: 42, damage: 312, range: 270, lungeSpeed: 10.0, hitstun: 36, pushback: 25, meterGain: 0, isSuper: true, isColdBath: true }
+            },
+            stretcher: {
+                light:   { name: 'キャスター車輪スピンひき逃げ', startup: 4, activeEnd: 10, totalFrames: 16, damage: 55, range: 185, lungeSpeed: 7.8, hitstun: 16, pushback: 11, meterGain: 12 },
+                heavy:   { name: 'ステンレス柵ギロチン開閉', startup: 7, activeEnd: 16, totalFrames: 24, damage: 120, range: 215, lungeSpeed: 8.6, hitstun: 22, pushback: 18, meterGain: 19, isWallTransport: true },
+                special: { name: '拘束ベルト射出・画面端強制搬送', startup: 11, activeEnd: 22, totalFrames: 34, damage: 136, range: 250, lungeSpeed: 10.5, hitstun: 26, pushback: 22, meterGain: 25, isGuardBreak: true, isWallTransport: true },
+                super:   { name: 'コード・エマージェンシー往復暴走', startup: 5, activeEnd: 30, totalFrames: 42, damage: 310, range: 280, lungeSpeed: 12.0, hitstun: 36, pushback: 26, meterGain: 0, isSuper: true, isWallTransport: true }
+            },
+            roentgen: {
+                light:   { name: 'シャウカステン盾バッシュ', startup: 4, activeEnd: 10, totalFrames: 16, damage: 54, range: 180, lungeSpeed: 5.5, hitstun: 16, pushback: 10, meterGain: 12 },
+                heavy:   { name: '高電圧X線管球パルス砲', startup: 7, activeEnd: 16, totalFrames: 24, damage: 118, range: 235, lungeSpeed: 5.2, hitstun: 22, pushback: 16, meterGain: 19, isXrayFlash: true },
+                special: { name: '全身透視レントゲンフラッシュ照射', startup: 11, activeEnd: 22, totalFrames: 34, damage: 138, range: 255, lungeSpeed: 5.8, hitstun: 26, pushback: 18, meterGain: 25, isGuardBreak: true, isXrayFlash: true },
+                super:   { name: 'メガシーベルト・フルスキャン大照射', startup: 5, activeEnd: 30, totalFrames: 42, damage: 308, range: 285, lungeSpeed: 8.5, hitstun: 36, pushback: 24, meterGain: 0, isSuper: true, isXrayFlash: true }
+            },
+            traffic: {
+                light:   { name: '止まれ標識スピア突き', startup: 4, activeEnd: 10, totalFrames: 16, damage: 56, range: 200, lungeSpeed: 5.6, hitstun: 16, pushback: 11, meterGain: 12 },
+                heavy:   { name: 'ガードレール大盾クラッシュ', startup: 7, activeEnd: 16, totalFrames: 24, damage: 122, range: 215, lungeSpeed: 7.2, hitstun: 22, pushback: 18, meterGain: 19 },
+                special: { name: '強制赤信号・違反取締り雷撃', startup: 11, activeEnd: 22, totalFrames: 34, damage: 142, range: 245, lungeSpeed: 6.4, hitstun: 26, pushback: 19, meterGain: 25, isGuardBreak: true, isTrafficShock: true },
+                super:   { name: 'スクランブル交差点・全信号大暴走', startup: 5, activeEnd: 30, totalFrames: 42, damage: 312, range: 275, lungeSpeed: 9.2, hitstun: 36, pushback: 25, meterGain: 0, isSuper: true, isTrafficShock: true }
+            },
+            slotjack: {
+                light:   { name: 'メダルマシンガン射出', startup: 4, activeEnd: 11, totalFrames: 16, damage: 55, range: 205, lungeSpeed: 5.0, hitstun: 16, pushback: 11, meterGain: 12 },
+                heavy:   { name: '巨大スロットレバー強打抽選', startup: 7, activeEnd: 16, totalFrames: 24, damage: 122, range: 220, lungeSpeed: 7.0, hitstun: 22, pushback: 17, meterGain: 19 },
+                special: { name: 'ジャックポット777大放出', startup: 11, activeEnd: 22, totalFrames: 34, damage: 142, range: 240, lungeSpeed: 7.5, hitstun: 26, pushback: 19, meterGain: 25, isGuardBreak: true },
+                super:   { name: 'カジノロワイヤル・ミリオンコイン嵐', startup: 5, activeEnd: 30, totalFrames: 42, damage: 315, range: 275, lungeSpeed: 9.5, hitstun: 36, pushback: 25, meterGain: 0, isSuper: true }
+            },
             phantom: {
                 light:   { name: '不可視・霊波パルス', startup: 4, activeEnd: 11, totalFrames: 16, damage: 55, range: 195, lungeSpeed: 5.5, hitstun: 16, pushback: 10, meterGain: 12 },
                 heavy:   { name: '真空・大波動刃', startup: 7, activeEnd: 16, totalFrames: 24, damage: 118, range: 230, lungeSpeed: 6.8, hitstun: 21, pushback: 17, meterGain: 19 },
@@ -9903,12 +11697,25 @@ window.addEventListener('DOMContentLoaded', () => {
                 heavy:   { name: '濃硫酸の蒸気＆大気衝撃波', startup: 7, activeEnd: 17, totalFrames: 25, damage: 130, range: 260, lungeSpeed: 5.5, hitstun: 22, pushback: 20, meterGain: 20 },
                 special: { name: '惑星ぶつけ＆時間差大爆発', startup: 11, activeEnd: 22, totalFrames: 34, damage: 145, range: 285, lungeSpeed: 4.5, hitstun: 26, pushback: 18, meterGain: 25, isGuardBreak: true, isVenusPlanetDrop: true },
                 super:   { name: '金星降臨・超惑星激突＆時間差大爆発', startup: 5, activeEnd: 30, totalFrames: 42, damage: 310, range: 310, lungeSpeed: 6.5, hitstun: 36, pushback: 26, meterGain: 0, isSuper: true, isVenusPlanetDrop: true }
+            },
+            abyss: {
+                light:   { name: '事象の地平線・重力波パルス', startup: 4, activeEnd: 11, totalFrames: 16, damage: 66, range: 225, lungeSpeed: 7.5, hitstun: 17, pushback: 6, meterGain: 13 },
+                heavy:   { name: '空間歪曲・ブラックホール圧殺', startup: 7, activeEnd: 17, totalFrames: 25, damage: 138, range: 270, lungeSpeed: 6.2, hitstun: 23, pushback: 8, meterGain: 20 },
+                special: { name: 'ゼロ・グラビティ無重力浮遊', startup: 11, activeEnd: 22, totalFrames: 34, damage: 155, range: 295, lungeSpeed: 5.5, hitstun: 28, pushback: 12, meterGain: 26, isGuardBreak: true, isZeroGravity: true },
+                super:   { name: 'シンギュラリティ・超新星大崩壊', startup: 5, activeEnd: 30, totalFrames: 42, damage: 330, range: 320, lungeSpeed: 8.0, hitstun: 38, pushback: 24, meterGain: 0, isSuper: true, isZeroGravity: true }
+            },
+            helios: {
+                light:   { name: 'コロナフレア放射', startup: 4, activeEnd: 11, totalFrames: 16, damage: 70, range: 235, lungeSpeed: 8.0, hitstun: 18, pushback: 16, meterGain: 14, isSolarFlare: true },
+                heavy:   { name: '太陽風プラズマ衝撃波', startup: 7, activeEnd: 17, totalFrames: 25, damage: 146, range: 280, lungeSpeed: 7.0, hitstun: 24, pushback: 24, meterGain: 21, isSolarFlare: true },
+                special: { name: 'スーパーノヴァ・プロミネンス大爆発', startup: 11, activeEnd: 22, totalFrames: 34, damage: 165, range: 305, lungeSpeed: 6.5, hitstun: 28, pushback: 26, meterGain: 26, isGuardBreak: true, isSolarFlare: true },
+                super:   { name: '恒星崩壊・アルティメット・ヘリオスフレア', startup: 5, activeEnd: 30, totalFrames: 42, damage: 350, range: 335, lungeSpeed: 9.0, hitstun: 40, pushback: 30, meterGain: 0, isSuper: true, isSolarFlare: true }
             }
         };
-        if (customMoves[id] && customMoves[id][type]) {
-            return customMoves[id][type];
+        var moveObj = (customMoves[id] && customMoves[id][type]) ? Object.assign({}, customMoves[id][type]) : Object.assign({}, origGetMoveData.call(this, type));
+        if ((this.inkBlindTimer || 0) > 0) {
+            moveObj.range = Math.round(moveObj.range * 0.80);
         }
-        return origGetMoveData.call(this, type);
+        return moveObj;
     };
 
     var origReset = Fighter.prototype.reset;
@@ -9920,16 +11727,89 @@ window.addEventListener('DOMContentLoaded', () => {
         this.timeStopTimer = 0;
         this.freezeTimer = 0;
         this.burnTimer = 0;
+        this.zeroGravityTimer = 0;
+        this.trafficColor = 'green';
+        this.trafficCycleTimer = 0;
+        this.redLightPenaltyCooldown = 0;
+        this.xrayExposedTimer = 0;
+        this.inkBlindTimer = 0;
+        this.saunaHeatStacks = 0;
+        this.slotReels = ['7', '7', '7'];
+        this.slotFeverTimer = 0;
     };
 
-    // 8. 攻撃開始時の特殊ギミック
+    // 9. 攻撃開始時の特殊ギミック（全30キャラ対応）
     var origStartAttack = Fighter.prototype.startAttack;
     Fighter.prototype.startAttack = function(type) {
-        if (this.timeStopTimer > 0 || this.freezeTimer > 0) return false;
+        if (this.timeStopTimer > 0 || this.freezeTimer > 0 || this.zeroGravityTimer > 0) return false;
         var started = origStartAttack.call(this, type);
         if (started) {
             var opponent = this.isP1 ? player2 : player1;
-            if (this.id === 'phantom') {
+            if (this.id === 'gensan') {
+                sfx.wokSizzleSound();
+                if (type === 'special' || type === 'super') {
+                    var oilX = Math.max(STAGE_LEFT + 60, Math.min(STAGE_RIGHT - 60, this.x + this.facing * 125));
+                    gensanChiliPools.push({ owner: this, x: oilX, radius: 78, timer: 300 });
+                    if (gensanChiliPools.length > 2) gensanChiliPools.shift();
+                    spawnCallout('🌶️ 激辛ラー油スリップ床設置!!', oilX, GROUND_Y - 120, '#f97316');
+                }
+            } else if (this.id === 'kraken') {
+                sfx.krakenInkSound();
+            } else if (this.id === 'drskull') {
+                sfx.boneRattleSound();
+            } else if (this.id === 'totonoi') {
+                sfx.saunaSteamSound();
+            } else if (this.id === 'stretcher') {
+                sfx.stretcherSirenSound();
+            } else if (this.id === 'roentgen') {
+                sfx.xrayFlashSound();
+            } else if (this.id === 'traffic') {
+                sfx.trafficBuzzerSound();
+                if (type === 'special' || type === 'super') {
+                    this.trafficColor = 'red';
+                    this.trafficCycleTimer = 0;
+                }
+            } else if (this.id === 'slotjack') {
+                sfx.slotSpinSound();
+                var roll = Math.random();
+                if (type === 'super' || roll < 0.24) {
+                    this.slotReels = ['7', '7', '7'];
+                    this.slotFeverTimer = 240;
+                    sfx.superFlash();
+                    spawnCallout('🎰 777 JACKPOT!! 4秒間FEVER(攻撃1.6倍)!!', this.x, this.y - 185, '#fde047');
+                } else if (roll < 0.50) {
+                    this.slotReels = ['🍒', '🍒', '🍒'];
+                    var healHp = Math.min(this.maxHp - this.hp, 48);
+                    if (healHp > 0) {
+                        this.hp += healHp;
+                        this.displayHp = Math.max(this.displayHp, this.hp);
+                        spawnCallout('🍒 チェリー揃い!! HP +' + Math.round(healHp) + '回復!', this.x, this.y - 175, '#4ade80');
+                    }
+                } else if (roll < 0.76) {
+                    this.slotReels = ['🔔', '🔔', '🔔'];
+                    this.meter = Math.min(100, this.meter + 35);
+                    spawnCallout('🔔 ベル揃い!! 超必殺ゲージ +35%!!', this.x, this.y - 175, '#facc15');
+                } else {
+                    this.slotReels = ['💀', '💀', '💀'];
+                    if (opponent && opponent.hp > 0) {
+                        opponent.burnTimer = 150;
+                        spawnCallout('💀 ドクロ揃い!! 敵に呪毒スリップ付与!!', opponent.x, opponent.y - 175, '#c084fc');
+                    }
+                }
+            } else if (this.id === 'abyss') {
+                sfx.abyssGravitySound();
+                if (opponent && (type === 'heavy' || type === 'special' || type === 'super')) {
+                    var pullTarget = this.x + this.facing * 85;
+                    opponent.x += (pullTarget - opponent.x) * 0.55;
+                    spawnCallout('🕳️ 事象の地平線・超重力吸引!!', opponent.x, opponent.y - 170, '#e879f9');
+                }
+            } else if (this.id === 'helios') {
+                sfx.heliosFlareSound();
+                if (opponent && (type === 'heavy' || type === 'special' || type === 'super')) {
+                    opponent.vx = this.facing * 16;
+                    spawnCallout('☀️ 太陽風プラズマバースト!!', opponent.x, opponent.y - 175, '#fde047');
+                }
+            } else if (this.id === 'phantom') {
                 sfx.phantomWaveSound();
             } else if (this.id === 'chronos') {
                 sfx.chronosBellSound();
@@ -9970,14 +11850,41 @@ window.addEventListener('DOMContentLoaded', () => {
         return started;
     };
 
-    // 9. ヒット解決時の固有ギミック
+    // 10. ヒット解決時の固有ギミック（★超必殺技5連撃の1〜4発目が骨分離やアーマーに弾かれるバグを完全修正！）
     var origResolveHit = resolveHit;
     resolveHit = function(attacker, defender, move) {
-        var prevDefState = defender.state;
-        origResolveHit(attacker, defender, move);
+        var isAnySuperHit = !!(move.isSuper || (attacker && attacker.state === 'attack' && attacker.attackType === 'super'));
 
+        // 🦴 Dr.スカル：しゃがみ骨分離中は「崩し」「超必殺（1〜5発目すべて）」以外の通常打撃を回避！
+        if (defender.id === 'drskull' && defender.state === 'crouch' && !move.isGuardBreak && !isAnySuperHit) {
+            sfx.boneRattleSound();
+            spawnCallout('🦴 骨分離・極小化回避!! (MISS)', defender.x, defender.y - 95, '#e2e8f0');
+            return;
+        }
+
+        // 🩻 Dr.レントゲン：相手がX線透視露出状態なら受けるダメージが1.35倍に増加！
+        var modifiedMove = Object.assign({}, move);
+        if (isAnySuperHit) {
+            modifiedMove.isSuper = true;
+        }
+        if ((defender.xrayExposedTimer || 0) > 0) {
+            modifiedMove.damage = Math.round(modifiedMove.damage * 1.35);
+        }
+
+        var prevDefHp = defender.hp;
+        var prevDefState = defender.state;
+        origResolveHit(attacker, defender, modifiedMove);
+
+        // 🗑️ ダスト・クラーケン：しゃがみドラム缶引きこもりガード中は削りダメージを80%カット！
+        if (defender.id === 'kraken' && defender.isBlocking && !move.isGuardBreak && !isAnySuperHit && defender.hp < prevDefHp) {
+            var lostChip = prevDefHp - defender.hp;
+            defender.hp = Math.min(defender.maxHp, prevDefHp - Math.max(1, Math.round(lostChip * 0.2)));
+            spawnCallout('🗑️ ドラム缶装甲!! (削り80%軽減)', defender.x, defender.y - 140, '#94a3b8');
+        }
+
+        // 💪 ギガ・パンプ：HP50%以下で弱攻撃に対するスーパーアーマー（※超必殺技の1〜5発目には発動しないよう修正！）
         if (defender.id === 'gigapump' && defender.hp > 0 && defender.hp <= defender.maxHp * 0.5) {
-            if (!move.isGuardBreak && !move.isSuper && move.damage < 80) {
+            if (!move.isGuardBreak && !isAnySuperHit && move.damage < 80) {
                 defender.state = prevDefState === 'ko' ? 'idle' : prevDefState;
                 defender.stateTimer = 0;
                 defender.vx *= 0.2;
@@ -9985,16 +11892,97 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // 🕰️ クロノス：2.5秒間タイムストップ
         if (attacker.id === 'chronos' && move.isTimeStop && defender.hp > 0) {
             defender.timeStopTimer = 150;
             sfx.chronosBellSound();
             spawnCallout('⏱️ TIME STOP!! (2.5秒間・時間完全停止)', defender.x, defender.y - 195, '#fde047');
         }
 
+        // 🥫 暴走自販機：氷結停止＆火傷スリップ
         if (attacker.id === 'vending' && move.isThermalCan && defender.hp > 0) {
             defender.freezeTimer = 90;
             defender.burnTimer = 210;
             spawnCallout('❄️つめた〜い氷結 ＆ 🔥あったか〜い火傷!!', defender.x, defender.y - 195, '#38bdf8');
+        }
+
+        // 🍜 鉄鍋の源さん：中華鍋の炎攻撃で火傷付与＆ラー油床に引火して大爆発ボーナス！
+        if (attacker.id === 'gensan' && move.isFlameWok && defender.hp > 0) {
+            defender.burnTimer = 180;
+            for (var p = gensanChiliPools.length - 1; p >= 0; p--) {
+                var pool = gensanChiliPools[p];
+                if (Math.abs(defender.x - pool.x) <= pool.radius + 45) {
+                    gensanChiliPools.splice(p, 1);
+                    sfx.planetExplosion();
+                    var ignDmg = Math.round(55 * (attacker.atkMult || 1));
+                    defender.hp = Math.max(0, defender.hp - ignDmg);
+                    defender.vy = -12;
+                    venusVisualExplosions.push({ x: defender.x, y: GROUND_Y - 40, maxRadius: 125, life: 20, maxLife: 20 });
+                    spawnCallout('🔥 激辛ラー油大引火!! (-' + ignDmg + ' HP)', defender.x, defender.y - 195, '#f97316');
+                    checkKO(attacker, defender, modifiedMove);
+                    break;
+                }
+            }
+        }
+
+        // 🛏️ 零号室ストレッチャー：画面端の壁まで強制搬送＆壁バウンド追撃！
+        if (attacker.id === 'stretcher' && move.isWallTransport && defender.hp > 0) {
+            var cornerX = attacker.facing > 0 ? STAGE_RIGHT - 12 : STAGE_LEFT + 12;
+            defender.x = cornerX;
+            attacker.x = cornerX - attacker.facing * 95;
+            var wallDmg = Math.round(38 * (attacker.atkMult || 1));
+            defender.hp = Math.max(0, defender.hp - wallDmg);
+            defender.vy = -11;
+            defender.vx = -attacker.facing * 8;
+            shakeTime = 14; shakeMag = 12;
+            spawnHitSparks(cornerX, defender.y - 90, '#38bdf8', 22);
+            spawnCallout('🛏️ 画面端・強制搬送壁クラッシュ!! (-' + wallDmg + ' HP)', defender.x, defender.y - 190, '#38bdf8');
+            checkKO(attacker, defender, modifiedMove);
+        }
+
+        // 🕳️ アビス：必殺技ヒットで相手を約2.2秒間『ゼロ・グラビティ（無重力空中浮遊）』にする！
+        if (attacker.id === 'abyss' && move.isZeroGravity && defender.hp > 0) {
+            defender.zeroGravityTimer = 135;
+            defender.y = Math.min(defender.y, GROUND_Y - 75);
+            sfx.abyssGravitySound();
+            spawnCallout('🕳️ ZERO GRAVITY!! (無重力浮遊・行動不能)', defender.x, defender.y - 195, '#e879f9');
+        }
+
+        // 🗑️ ダスト・クラーケン：イカスミ粘液ブラインド付与
+        if (attacker.id === 'kraken' && move.isKrakenInk && defender.hp > 0) {
+            defender.inkBlindTimer = 240;
+            sfx.krakenInkSound();
+            spawnCallout('🦑 イカスミ視界不良!! (速度＆リーチ低下)', defender.x, defender.y - 195, '#f472b6');
+        }
+
+        // 🧖‍♂️ トトノイ親方：熱波スタック蓄積 ➔ 水風呂ぶっかけで強制『ととのい気絶』！
+        if (attacker.id === 'totonoi' && defender.hp > 0) {
+            if (move.isSaunaHeat) {
+                defender.saunaHeatStacks = Math.min(3, (defender.saunaHeatStacks || 0) + 1);
+                defender.burnTimer = 120;
+                spawnCallout('♨️ ロウリュ熱波蓄積 (x' + defender.saunaHeatStacks + ')!!', defender.x, defender.y - 185, '#fb923c');
+            } else if (move.isColdBath && (defender.saunaHeatStacks || 0) >= 2) {
+                defender.saunaHeatStacks = 0;
+                defender.state = 'dizzy';
+                defender.dizzyTimer = 105;
+                sfx.superFlash();
+                spawnCallout('🧖‍♂️ 温度差ショック!! 『ととのい昇天スタン』!!', defender.x, defender.y - 200, '#38bdf8');
+            }
+        }
+
+        // 🩻 Dr.レントゲン：X線フラッシュ透視露出付与
+        if (attacker.id === 'roentgen' && move.isXrayFlash && defender.hp > 0) {
+            defender.xrayExposedTimer = 240;
+            sfx.xrayFlashSound();
+            spawnCallout('🩻 X線骨格透視!! (4秒間・被ダメージ+35%)', defender.x, defender.y - 195, '#22d3ee');
+        }
+
+        // ☀️ ヘリオス：恒星フレアによる強力火傷＆プロミネンス爆発
+        if (attacker.id === 'helios' && move.isSolarFlare && defender.hp > 0) {
+            defender.burnTimer = 240;
+            if (move.isGuardBreak || isAnySuperHit) {
+                venusVisualExplosions.push({ x: defender.x, y: defender.y - 80, maxRadius: 155, life: 22, maxLife: 22 });
+            }
         }
     };
 
@@ -10024,7 +12012,28 @@ window.addEventListener('DOMContentLoaded', () => {
         origCheckKO(attacker, defender, move);
     };
 
-    // 10. 毎フレーム更新処理
+    // ★巨大天体ボス（ヴィーナス・アビス・ヘリオス）がプレイヤーに密着してめり込まないようCPU間合いを適正化
+    var origUpdateCPU = updateCPU;
+    updateCPU = function() {
+        origUpdateCPU();
+        if (gameState !== 'playing') return;
+        var cpu = player2;
+        var p1 = player1;
+        if (cpu && (cpu.id === 'venus' || cpu.id === 'abyss' || cpu.id === 'helios') && cpu.state === 'walk') {
+            var dist = Math.abs(p1.x - cpu.x);
+            if (dist <= 185) {
+                cpu.vx = 0;
+                cpu.state = 'idle';
+                if (cpu.meter >= 100 && Math.random() < 0.08) {
+                    cpu.startAttack('super');
+                } else if (Math.random() < 0.12) {
+                    cpu.startAttack(Math.random() < 0.55 ? 'light' : 'heavy');
+                }
+            }
+        }
+    };
+
+    // 11. 毎フレーム更新処理（★トラフィックの赤信号カウンターが超必殺技に割り込まないよう修正済）
     var origFighterUpdate = Fighter.prototype.update;
     Fighter.prototype.update = function(opponent) {
         if (this.timeStopTimer > 0 || this.freezeTimer > 0) {
@@ -10036,6 +12045,33 @@ window.addEventListener('DOMContentLoaded', () => {
                 this.displayHp -= Math.max(1.5, (this.displayHp - this.hp) * 0.12);
             }
             return;
+        }
+
+        if (this.zeroGravityTimer > 0) {
+            this.zeroGravityTimer--;
+            var targetFloatY = GROUND_Y - 108 + Math.sin(this.animTime * 0.18) * 14;
+            this.y += (targetFloatY - this.y) * 0.16;
+            this.vy = 0;
+            this.vx *= 0.85;
+            if (this.displayHp > this.hp) {
+                this.displayHp -= Math.max(1.5, (this.displayHp - this.hp) * 0.12);
+            }
+            return;
+        }
+
+        if (this.xrayExposedTimer > 0) this.xrayExposedTimer--;
+        if (this.inkBlindTimer > 0) {
+            this.inkBlindTimer--;
+            this.vx *= 0.72;
+        }
+
+        if (this.slotFeverTimer > 0) {
+            this.slotFeverTimer--;
+            if (this.baseAtkMult) {
+                this.atkMult = Number((this.baseAtkMult * 1.55).toFixed(2));
+            }
+        } else if (this.id === 'slotjack' && this.baseAtkMult) {
+            this.atkMult = this.baseAtkMult;
         }
 
         if (this.burnTimer > 0) {
@@ -10053,6 +12089,65 @@ window.addEventListener('DOMContentLoaded', () => {
                     size: 4.5,
                     life: 16
                 });
+            }
+        }
+
+        // 🚦 トラフィック：3色信号サイクル（※超必殺技には赤信号カウンターが割り込まないよう修正）
+        if (this.id === 'traffic' && gameState === 'playing' && this.hp > 0) {
+            this.trafficCycleTimer = (this.trafficCycleTimer || 0) + 1;
+            if (this.redLightPenaltyCooldown > 0) this.redLightPenaltyCooldown--;
+            var cMod = this.trafficCycleTimer % 420;
+            var prevCol = this.trafficColor;
+            this.trafficColor = cMod < 160 ? 'green' : (cMod < 290 ? 'yellow' : 'red');
+            if (prevCol !== this.trafficColor) {
+                sfx.trafficBuzzerSound();
+            }
+            if (this.trafficColor === 'green' && this.state === 'walk') {
+                this.x = Math.max(STAGE_LEFT, Math.min(STAGE_RIGHT, this.x + this.vx * 0.38));
+            } else if (this.trafficColor === 'yellow') {
+                this.meter = Math.min(100, this.meter + 0.32);
+            } else if (this.trafficColor === 'red' && opponent && opponent.hp > 0 && this.redLightPenaltyCooldown <= 0) {
+                var oppMovingForward = (opponent.state === 'walk' && (opponent.vx * opponent.facing) > 0.5);
+                var oppNormalAttacking = (opponent.state === 'attack' && opponent.attackType !== 'super' && opponent.attackFrame === 2);
+                if (oppMovingForward || oppNormalAttacking) {
+                    this.redLightPenaltyCooldown = 95;
+                    sfx.defibShockSound();
+                    var penDmg = Math.round(42 * (this.atkMult || 1));
+                    opponent.hp = Math.max(1, opponent.hp - penDmg);
+                    opponent.state = 'hit';
+                    opponent.stateTimer = 18;
+                    opponent.vx = -opponent.facing * 10;
+                    shakeTime = 10; shakeMag = 9;
+                    spawnHitSparks(opponent.x, opponent.y - 100, '#ef4444', 20);
+                    spawnCallout('🚦 赤信号無視!! 違反雷撃カウンター (-' + penDmg + ' HP)', opponent.x, opponent.y - 185, '#ef4444');
+                }
+            }
+        }
+
+        // 🕳️ アビス：常時重力吸引
+        if (this.id === 'abyss' && gameState === 'playing' && this.hp > 0 && opponent && opponent.hp > 0) {
+            var distToOpp = this.x - opponent.x;
+            if (Math.abs(distToOpp) > 85) {
+                opponent.x = Math.max(STAGE_LEFT, Math.min(STAGE_RIGHT, opponent.x + Math.sign(distToOpp) * 1.15));
+            }
+        }
+
+        // ☀️ ヘリオス：6000℃のコロナ熱放射
+        if (this.id === 'helios' && gameState === 'playing' && this.hp > 0 && opponent && opponent.hp > 1) {
+            var distH = Math.abs(this.x - opponent.x);
+            if (distH < 245) {
+                opponent.hp = Math.max(1, opponent.hp - 0.45);
+                if (this.animTime % 14 === 0) {
+                    particles.push({
+                        x: opponent.x + (Math.random() - 0.5) * 44,
+                        y: opponent.y - 60 - Math.random() * 60,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: -2.6,
+                        color: '#fde047',
+                        size: 5,
+                        life: 16
+                    });
+                }
             }
         }
 
@@ -10101,7 +12196,21 @@ window.addEventListener('DOMContentLoaded', () => {
             if (gameState !== 'playing') {
                 venusDelayedBombs = [];
                 doppelShadowQueue = [];
+                gensanChiliPools = [];
             } else {
+                for (var g = gensanChiliPools.length - 1; g >= 0; g--) {
+                    var gp = gensanChiliPools[g];
+                    gp.timer--;
+                    var targetF = gp.owner.isP1 ? player2 : player1;
+                    if (targetF && targetF.hp > 0 && targetF.isGrounded && Math.abs(targetF.x - gp.x) <= gp.radius) {
+                        targetF.x = Math.max(STAGE_LEFT, Math.min(STAGE_RIGHT, targetF.x + targetF.facing * 2.4));
+                        if (frameCounter % 15 === 0) {
+                            targetF.hp = Math.max(1, targetF.hp - 3);
+                        }
+                    }
+                    if (gp.timer <= 0) gensanChiliPools.splice(g, 1);
+                }
+
                 for (var s = doppelShadowQueue.length - 1; s >= 0; s--) {
                     var sq = doppelShadowQueue[s];
                     sq.timer--;
@@ -10158,14 +12267,12 @@ window.addEventListener('DOMContentLoaded', () => {
     };
 
     // =========================================================================
-    // 11. 5大仕様改善 ＋ サバイバルモード敵出現プール＆ボス出現設定
+    // 12. 仕様改善 ＋ サバイバルモード敵出現プール＆20/30/40/50戦目ボス確定出現
     // =========================================================================
 
-    // ★勝利したステージの次までしか選択・表示できないよう厳密化（負けても次は絶対に開かない）
     isChallengeStageSelectable = function(stageIdx) {
         if (stageIdx <= 0) return true;
         if (stageIdx >= CHALLENGE_LADDER.length) return false;
-        // 暗号2929等で全キャラ解放済みの場合は全ステージ選択可
         var allUnlocked = ALL_CHAR_IDS.every(function(id) { return !!vsUnlocked[id]; });
         if (allUnlocked) return true;
 
@@ -10176,8 +12283,10 @@ window.addEventListener('DOMContentLoaded', () => {
     };
 
     getCharUnlockRequirementText = function(charId) {
-        if (charId === 'maou') return '🔥サバイバル20連勝で解放';
-        if (charId === 'venus') return '🔥サバイバル30戦目撃破で解放';
+        if (charId === 'maou')   return '🔥サバイバル20連勝で解放';
+        if (charId === 'venus')  return '🔥サバイバル30戦目撃破で解放';
+        if (charId === 'abyss')  return '🔥サバイバル40戦目撃破で解放';
+        if (charId === 'helios') return '🔥サバイバル50戦目撃破で解放';
         return '🏆チャレンジモード勝利で解放';
     };
 
@@ -10188,6 +12297,10 @@ window.addEventListener('DOMContentLoaded', () => {
             toast.textContent = '🔒『魔王ラセツ』はサバイバルモードで20連勝を達成すると解放されます！';
         } else if (charId === 'venus') {
             toast.textContent = '🔒『ヴィーナス』はサバイバルモード30戦目に出現し、撃破すると解放されます！';
+        } else if (charId === 'abyss') {
+            toast.textContent = '🔒『アビス』はサバイバルモード40戦目に出現し、撃破すると解放されます！';
+        } else if (charId === 'helios') {
+            toast.textContent = '🔒『ヘリオス』はサバイバルモード50戦目に出現し、撃破すると解放されます！';
         } else {
             toast.textContent = '🔒 このキャラクターはシークレットです！チャレンジモードで前の対戦相手に勝利すると開きます！';
         }
@@ -10196,7 +12309,6 @@ window.addEventListener('DOMContentLoaded', () => {
         secretToastTimer = setTimeout(function() { toast.classList.add('hidden'); }, 2800);
     };
 
-    // ★強化道場の上限を Lv.10 ➔ Lv.20 に引き上げ
     renderUpgradeShopList = function() {
         var container = document.getElementById('upgrade-char-list');
         if (!container) return;
@@ -10253,7 +12365,6 @@ window.addEventListener('DOMContentLoaded', () => {
         saveGameProgress();
     };
 
-    // ★闘気オーラショップをサバイバル連勝記録（3 / 5 / 10 / 15 / 20連勝）で解放する仕様に変更
     var origUpdateBPDisplays = updateBPDisplays;
     updateBPDisplays = function() {
         origUpdateBPDisplays();
@@ -10268,7 +12379,7 @@ window.addEventListener('DOMContentLoaded', () => {
             for (var i = 0; i < CHALLENGE_LADDER.length; i++) {
                 if ((challengeStageBestDiff[i] || 0) > 0) clearedCount++;
             }
-            chalBest.textContent = challengeBossCleared ? '🏆全18ステージ制覇!' : '🏆進行:' + clearedCount + '/18';
+            chalBest.textContent = challengeBossCleared ? '🏆全26ステージ制覇!' : '🏆進行:' + clearedCount + '/' + CHALLENGE_LADDER.length;
         }
     };
 
@@ -10336,16 +12447,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
     var origSelectP2 = window.selectP2;
     window.selectP2 = function(charId) {
-        if (gameMode === 'challenge' && charId === 'venus') {
-            sfx.init(); sfx.block(); showSecretToast('venus');
+        if (gameMode === 'challenge' && (charId === 'venus' || charId === 'abyss' || charId === 'helios')) {
+            sfx.init(); sfx.block(); showSecretToast(charId);
             return;
         }
         origSelectP2(charId);
     };
 
-    // モード開始時にチャレンジステージの位置を「未クリアの最初のステージ（到達済み最新ステージ）」に合わせる
     var origOpenMode = window.openMode;
     window.openMode = function(mode) {
+        cpuDifficulty = 'normal';
         if (mode === 'challenge') {
             var latestReach = 0;
             for (var i = 0; i < CHALLENGE_LADDER.length; i++) {
@@ -10358,49 +12469,44 @@ window.addEventListener('DOMContentLoaded', () => {
         origOpenMode(mode);
     };
 
-    // ★サバイバルモードの通常敵順序リスト（龍〜成金院長までは初期からランダム出現、ベイビーゾンビ以降は解放されたキャラまで出現）
+    // ★サバイバルモードの通常敵順序リスト（通常戦は悪徳院長まで／悪徳院長より先が解放されていれば解放済みキャラまでランダム出現）
+    // ★20戦目(ラセツ)・30戦目(ヴィーナス)・40戦目(アビス)・50戦目(ヘリオス)は進行状況を問わず確定降臨！
     var SURVIVAL_NORMAL_ORDER = [
         'ryuji', 'takeshi', 'sayuri', 'hanako', 'keita',
         'ume', 'tyrant', 'gallo', 'incho',
-        'baby', 'dragon', 'bacteria', 'phantom', 'chronos',
-        'pulserobo', 'vending', 'doppel', 'gigapump'
+        'gensan', 'baby', 'kraken', 'drskull', 'totonoi',
+        'stretcher', 'bacteria', 'roentgen', 'traffic', 'slotjack',
+        'pulserobo', 'phantom', 'doppel', 'gigapump', 'dragon',
+        'chronos', 'vending'
     ];
     var INCHO_ORDER_IDX = SURVIVAL_NORMAL_ORDER.indexOf('incho'); // 8 (成金院長 / 悪徳院長)
 
     startNextSurvivalOpponent = function() {
-        var keepHp = Math.min(player1.maxHp, player1.hp + Math.floor(player1.maxHp * 0.25));
+        var keepHp = Math.min(player1.maxHp, player1.hp + Math.floor(player1.maxHp * 0.28));
         var keepMeter = player1.meter;
 
-        // 悪徳院長(incho)より先のキャラがどこまで解放されているかを判定
         var maxUnlockedIdx = INCHO_ORDER_IDX;
-        var isBeyondInchoUnlocked = false;
         for (var i = 0; i < SURVIVAL_NORMAL_ORDER.length; i++) {
             var cid = SURVIVAL_NORMAL_ORDER[i];
             if (vsUnlocked[cid] || challengeUnlocked[cid]) {
                 if (i > maxUnlockedIdx) {
                     maxUnlockedIdx = i;
                 }
-                if (i > INCHO_ORDER_IDX) {
-                    isBeyondInchoUnlocked = true;
-                }
             }
         }
 
-        // ・悪徳院長を含む悪徳院長までのキャラが解放されていない（または悪徳院長までしか解放されていない）状態：
-        //   ➔ 悪徳院長(incho)までの9キャラがランダムに出現
-        // ・悪徳院長より先が解放されている場合：
-        //   ➔ 解放されているキャラクターまででランダムに出現
         var pool = SURVIVAL_NORMAL_ORDER.slice(0, maxUnlockedIdx + 1);
-
-        var nextWaveNumber = survivalStreak + 1; // 次の試合が何戦目か（19連勝後の次が第20戦、29連勝後の次が第30戦）
+        var nextWaveNumber = survivalStreak + 1;
         var nextCpuId;
 
         if (nextWaveNumber === 20) {
-            // 20戦目に魔王ラセツが登場！
             nextCpuId = 'maou';
-        } else if (nextWaveNumber === 30 && isBeyondInchoUnlocked) {
-            // 悪徳院長より先が解放されている場合は、30戦目にヴィーナスが出現！
+        } else if (nextWaveNumber === 30) {
             nextCpuId = 'venus';
+        } else if (nextWaveNumber === 40) {
+            nextCpuId = 'abyss';
+        } else if (nextWaveNumber === 50) {
+            nextCpuId = 'helios';
         } else {
             nextCpuId = pool[Math.floor(Math.random() * pool.length)];
         }
@@ -10417,9 +12523,18 @@ window.addEventListener('DOMContentLoaded', () => {
         venusDelayedBombs = [];
         venusVisualExplosions = [];
         doppelShadowQueue = [];
+        gensanChiliPools = [];
         gameState = 'playing';
 
-        if (nextCpuId === 'venus') {
+        if (nextCpuId === 'helios') {
+            bannerMessage = '☀️ 50戦目・究極恒星『ヘリオス』降臨!!\n撃破すればプレイアブル解放!!';
+            bannerTimer = 160;
+            sfx.heliosFlareSound();
+        } else if (nextCpuId === 'abyss') {
+            bannerMessage = '🕳️ 40戦目・暗黒天体『アビス』降臨!!\n撃破すればプレイアブル解放!!';
+            bannerTimer = 150;
+            sfx.abyssGravitySound();
+        } else if (nextCpuId === 'venus') {
             bannerMessage = '🪐 30戦目・超強敵『ヴィーナス』降臨!!\n撃破すればプレイアブル解放!!';
             bannerTimer = 140;
             sfx.venusSound();
@@ -10436,11 +12551,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
     var origHandleRoundEnd = handleRoundEnd;
     handleRoundEnd = function(roundWinner) {
-        var defeatedVenusInSurvival = (gameMode === 'survival' && roundWinner.isP1 && player2.id === 'venus');
+        var defeatedVenusInSurvival  = (gameMode === 'survival' && roundWinner.isP1 && player2.id === 'venus');
+        var defeatedAbyssInSurvival  = (gameMode === 'survival' && roundWinner.isP1 && player2.id === 'abyss');
+        var defeatedHeliosInSurvival = (gameMode === 'survival' && roundWinner.isP1 && player2.id === 'helios');
         var prevBestStreak = bestSurvivalStreak;
         origHandleRoundEnd(roundWinner);
 
-        // サバイバルで連勝記録を更新し、3 / 5 / 10 / 15 / 20連勝のオーラ購入権を達成した時のお知らせ
         if (gameMode === 'survival' && roundWinner.isP1) {
             var newlyUnlockedAura = AURA_CATALOG.find(function(a) {
                 return a.reqStreak > 0 && prevBestStreak < a.reqStreak && bestSurvivalStreak >= a.reqStreak;
@@ -10451,16 +12567,44 @@ window.addEventListener('DOMContentLoaded', () => {
         }
 
         if (defeatedVenusInSurvival) {
-            var newlyUnlocked = !challengeUnlocked.venus || !vsUnlocked.venus;
+            var newlyUnlockedV = !challengeUnlocked.venus || !vsUnlocked.venus;
             challengeUnlocked.venus = true;
             vsUnlocked.venus = true;
             sfx.superFlash();
             awardBP(1000, 'ヴィーナス撃破ボーナス');
             updateTitleUnlockStatus();
             saveGameProgress();
-            if (newlyUnlocked) {
+            if (newlyUnlockedV) {
                 bannerMessage = '🪐 30戦目ヴィーナス撃破!! (+1000 BP)\n🔓『ヴィーナス』プレイアブル解放!!';
                 bannerTimer = 210;
+            }
+        }
+
+        if (defeatedAbyssInSurvival) {
+            var newlyUnlockedA = !challengeUnlocked.abyss || !vsUnlocked.abyss;
+            challengeUnlocked.abyss = true;
+            vsUnlocked.abyss = true;
+            sfx.superFlash();
+            awardBP(1500, 'アビス撃破ボーナス');
+            updateTitleUnlockStatus();
+            saveGameProgress();
+            if (newlyUnlockedA) {
+                bannerMessage = '🕳️ 40戦目アビス撃破!! (+1500 BP)\n🔓『アビス』プレイアブル解放!!';
+                bannerTimer = 220;
+            }
+        }
+
+        if (defeatedHeliosInSurvival) {
+            var newlyUnlockedH = !challengeUnlocked.helios || !vsUnlocked.helios;
+            challengeUnlocked.helios = true;
+            vsUnlocked.helios = true;
+            sfx.superFlash();
+            awardBP(2000, 'ヘリオス撃破ボーナス');
+            updateTitleUnlockStatus();
+            saveGameProgress();
+            if (newlyUnlockedH) {
+                bannerMessage = '☀️ 50戦目ヘリオス撃破!! (+2000 BP)\n🔓『ヘリオス』プレイアブル解放!!';
+                bannerTimer = 230;
             }
         }
     };
@@ -10488,17 +12632,16 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // ★キャラ選択画面・ステージバーのシークレット表示を完全修正（未解放・未到達はすべて確実に 🔒 SECRET / ？？？）
+    // キャラ選択画面・ステージバーのシークレット表示（全30キャラ・26ステージ対応）
     var origRefreshCharacterCardsUI = refreshCharacterCardsUI;
     refreshCharacterCardsUI = function() {
+        cpuDifficulty = 'normal';
         injectCustomCharsDOM();
         origRefreshCharacterCardsUI();
 
-        // 難易度選択UIはサバイバルモードのみ表示
         var diffContainer = document.getElementById('survival-diff-container');
         if (diffContainer) {
-            if (gameMode === 'survival') diffContainer.classList.remove('hidden');
-            else diffContainer.classList.add('hidden');
+            diffContainer.classList.add('hidden');
         }
 
         if (gameMode === 'challenge') {
@@ -10514,9 +12657,11 @@ window.addEventListener('DOMContentLoaded', () => {
             var shortMap = {
                 takeshi: 'B-PAN', sayuri: 'SAYURI', hanako: 'HANAKO', keita: '兄やん',
                 ume: 'ウメ婆', tyrant: 'タイラント', gallo: 'Chickenleg', incho: '成金院長',
-                baby: 'ベイビー', dragon: 'ドラゴン', bacteria: 'バクテリア',
-                phantom: 'ファントム', chronos: 'クロノス', pulserobo: 'パルスロボ',
-                vending: '自販機', doppel: 'ドッペル', gigapump: 'ギガパンプ', maou: '魔王'
+                gensan: '源さん', baby: 'ベイビー', kraken: 'クラーケン', drskull: 'スカル',
+                totonoi: '親方', stretcher: '零号室', bacteria: 'バクテリア', roentgen: 'レントゲン',
+                traffic: '信号機', slotjack: 'スロット', pulserobo: 'パルスロボ',
+                phantom: 'ファントム', doppel: 'ドッペル', gigapump: 'ギガパンプ',
+                dragon: 'ドラゴン', chronos: 'クロノス', vending: '自販機', maou: '魔王'
             };
             CHALLENGE_LADDER.forEach(function(cid, idx) {
                 var stepEl = document.getElementById('ladder-step-' + idx);
@@ -10526,7 +12671,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 var cleared = (cid === 'maou' ? challengeBossCleared : challengeUnlocked[cid]) || bestStageRank > 0;
                 var isCurrent = idx === challengeStageIndex;
                 var selectable = isChallengeStageSelectable(idx);
-                // 未到達ステージ（!selectable）は確実に「？？？ 」でマスク
                 var shownName = selectable ? (shortMap[cid] || cid) : '？？？';
                 stepEl.textContent = stageTitle + ':' + (cleared ? '✅' : (isCurrent ? '🔥' : (selectable ? '⚔️' : '🔒'))) + shownName;
                 stepEl.className = isCurrent
@@ -10538,14 +12682,13 @@ window.addEventListener('DOMContentLoaded', () => {
                             : "text-center py-1 px-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-500 font-bold whitespace-nowrap truncate opacity-55 cursor-not-allowed"));
             });
         } else if (gameMode === 'survival') {
-            var curDiffMeta = DIFF_META_BY_RANK[DIFF_RANK_MAP[cpuDifficulty] || 2];
             var titleElS = document.getElementById('select-mode-title');
             var subElS = document.getElementById('select-mode-subtitle');
-            if (titleElS) titleElS.textContent = '🔥 SURVIVAL MODE 【難易度:' + curDiffMeta.short + ' / 最高:' + bestSurvivalStreak + '連勝】';
-            if (subElS) subElS.textContent = '3/5/10/15/20連勝で闘気オーラ解放！20戦目に魔王ラセツ、悪徳院長より先解放時は30戦目にヴィーナス出現！';
+            if (titleElS) titleElS.textContent = '🔥 SURVIVAL MODE - 百人組手 【最高記録:' + bestSurvivalStreak + '連勝】';
+            if (subElS) subElS.textContent = '20戦目ラセツ・30戦目ヴィーナス・40戦目アビス・50戦目ヘリオス降臨！撃破で解放！';
         }
 
-        // P1・CPUカードのシークレット表示を全20キャラ厳密に適用
+        // P1・CPUカードのシークレット表示を全30キャラ厳密に適用
         ALL_CHAR_IDS.forEach(function(id) {
             var meta = CHAR_CARD_META[id];
 
@@ -10570,7 +12713,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     p1Role.textContent = '🔒 SECRET';
                     p1Role.className = 'text-[9px] font-bold text-zinc-500';
                     p1Name.textContent = '？？？';
-                    p1Desc.textContent = id === 'maou' ? 'サバイバル20連勝' : (id === 'venus' ? 'サバイバル30戦目' : 'チャレンジで解放');
+                    p1Desc.textContent = id === 'maou' ? 'サバイバル20連勝' : (id === 'venus' ? 'サバイバル30戦目' : (id === 'abyss' ? 'サバイバル40戦目' : (id === 'helios' ? 'サバイバル50戦目' : 'チャレンジで解放')));
                     p1Card.className = "p-1.5 rounded-lg border-2 border-zinc-800 bg-zinc-950/90 text-left transition-all opacity-50 cursor-not-allowed";
                 }
             }
@@ -10582,18 +12725,18 @@ window.addEventListener('DOMContentLoaded', () => {
             var p2Desc = document.getElementById('p2-desc-' + id);
             if (p2Card && p2Role && p2Name && p2Desc) {
                 if (gameMode === 'challenge') {
-                    if (id === 'venus') {
-                        // ヴィーナスはチャレンジ非登場（未解放なら完全に？？？でシークレット表示）
-                        if (vsUnlocked.venus) {
-                            p2Role.textContent = '🪐 金星(サバ限定)';
-                            p2Role.className = 'text-[9px] font-bold text-amber-300';
+                    if (id === 'venus' || id === 'abyss' || id === 'helios') {
+                        var isBosUnlocked = !!vsUnlocked[id];
+                        if (isBosUnlocked) {
+                            p2Role.textContent = id === 'helios' ? '☀️ 恒星(サバ限定)' : (id === 'abyss' ? '🕳️ 暗黒天体(サバ)' : '🪐 金星(サバ限定)');
+                            p2Role.className = 'text-[9px] font-bold ' + meta.color;
                             p2Name.textContent = meta.name;
                             p2Desc.textContent = 'サバイバル限定';
                         } else {
                             p2Role.textContent = '🔒 SECRET';
                             p2Role.className = 'text-[9px] font-bold text-zinc-500';
                             p2Name.textContent = '？？？';
-                            p2Desc.textContent = 'サバイバル30戦目';
+                            p2Desc.textContent = id === 'helios' ? 'サバイバル50戦目' : (id === 'abyss' ? 'サバイバル40戦目' : 'サバイバル30戦目');
                         }
                         p2Card.className = "p-1.5 rounded-lg border-2 border-zinc-800 bg-zinc-950/80 text-left transition-all opacity-40 cursor-not-allowed";
                     } else {
@@ -10618,7 +12761,6 @@ window.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 } else {
-                    // サバイバル・フリー対戦モード
                     var p2Unlocked = isCharUnlockedForCurrentMode(id, false);
                     if (p2Unlocked) {
                         p2Role.textContent = meta.role;
@@ -10632,7 +12774,7 @@ window.addEventListener('DOMContentLoaded', () => {
                         p2Role.textContent = '🔒 SECRET';
                         p2Role.className = 'text-[9px] font-bold text-zinc-500';
                         p2Name.textContent = '？？？';
-                        p2Desc.textContent = id === 'maou' ? 'サバイバル20連勝' : (id === 'venus' ? 'サバイバル30戦目' : 'チャレンジで解放');
+                        p2Desc.textContent = id === 'maou' ? 'サバイバル20連勝' : (id === 'venus' ? 'サバイバル30戦目' : (id === 'abyss' ? 'サバイバル40戦目' : (id === 'helios' ? 'サバイバル50戦目' : 'チャレンジで解放')));
                         p2Card.className = "p-1.5 rounded-lg border-2 border-zinc-800 bg-zinc-950/90 text-left transition-all opacity-50 cursor-not-allowed";
                     }
                 }
@@ -10654,15 +12796,23 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    function initAll20CharsPatch() {
+    // 📱 スマホの縦横回転時に戦闘画面Canvasのサイズを即座に再計算して最大化
+    window.addEventListener('orientationchange', function() {
+        setTimeout(resizeCanvas, 80);
+        setTimeout(resizeCanvas, 260);
+    });
+
+    function initAll30CharsPatch() {
+        cpuDifficulty = 'normal';
         injectCustomCharsDOM();
         loadGameProgress();
         updateTitleUnlockStatus();
         refreshCharacterCardsUI();
+        setTimeout(resizeCanvas, 60);
     }
 
-    initAll20CharsPatch();
-    window.addEventListener('DOMContentLoaded', initAll20CharsPatch);
+    initAll30CharsPatch();
+    window.addEventListener('DOMContentLoaded', initAll30CharsPatch);
 })();
 </script>
 </body>
