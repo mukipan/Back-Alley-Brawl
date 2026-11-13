@@ -8737,12 +8737,13 @@ window.addEventListener('DOMContentLoaded', () => {
         gameLoop();
     });
     </script>
-
-<!-- ==================== 🔥 全20キャラ拡張パッチ（ヴィーナス＋ファントム＋新キャラ5体） ==================== -->
+<!-- ==================== 🔥 全20キャラ拡張＆5大仕様改善パッチ（見た目・技・音100%維持版） ==================== -->
 <script>
 (function() {
     if (window.__ALL_20_CHARS_PATCH_LOADED__) return;
     window.__ALL_20_CHARS_PATCH_LOADED__ = true;
+
+    var MAX_UPG_LV = 20;
 
     // 1. 追加キャラクター7体（ファントム＋新5体＋ヴィーナス）の登録
     var NEW_CHAR_LIST = ['phantom', 'chronos', 'pulserobo', 'vending', 'doppel', 'gigapump', 'venus'];
@@ -8752,12 +8753,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // チャレンジモードの魔王ラセツの前に6体（S12〜S17）を挿入（魔王ラセツがS18 BOSS）
     var CHALLENGE_NEW_STAGES = [
-        { id: 'phantom',   hp: 2950, atkMult: 2.20, aiRate: 0.93, recLv: 10 },
-        { id: 'chronos',   hp: 3020, atkMult: 2.22, aiRate: 0.94, recLv: 10 },
-        { id: 'pulserobo', hp: 2800, atkMult: 2.18, aiRate: 0.94, recLv: 10 },
-        { id: 'vending',   hp: 3150, atkMult: 2.25, aiRate: 0.94, recLv: 10 },
-        { id: 'doppel',    hp: 2980, atkMult: 2.24, aiRate: 0.95, recLv: 10 },
-        { id: 'gigapump',  hp: 3250, atkMult: 2.28, aiRate: 0.95, recLv: 10 }
+        { id: 'phantom',   hp: 1880, atkMult: 1.54, aiRate: 0.74, recLv: 12 },
+        { id: 'chronos',   hp: 1960, atkMult: 1.58, aiRate: 0.75, recLv: 13 },
+        { id: 'pulserobo', hp: 1850, atkMult: 1.55, aiRate: 0.76, recLv: 14 },
+        { id: 'vending',   hp: 2040, atkMult: 1.62, aiRate: 0.77, recLv: 15 },
+        { id: 'doppel',    hp: 1980, atkMult: 1.60, aiRate: 0.78, recLv: 16 },
+        { id: 'gigapump',  hp: 2120, atkMult: 1.65, aiRate: 0.79, recLv: 17 }
     ];
 
     CHALLENGE_NEW_STAGES.forEach(function(st) {
@@ -8772,6 +8773,31 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+
+    // ★ベイビーゾンビ(S9)以降の急激な難易度上昇をマイルドに調整（Lv.20強化に合わせてバランス最適化）
+    var BALANCED_STAGE_SCALING = [
+        { hp: 1000, atkMult: 1.00, aiRate: 0.42, recLv: 1 },  // S1: B-PAN
+        { hp: 1080, atkMult: 1.06, aiRate: 0.46, recLv: 2 },  // S2: SAYURI
+        { hp: 1160, atkMult: 1.12, aiRate: 0.50, recLv: 3 },  // S3: HANAKO
+        { hp: 1250, atkMult: 1.18, aiRate: 0.54, recLv: 4 },  // S4: ギャンブル兄やん
+        { hp: 1340, atkMult: 1.24, aiRate: 0.58, recLv: 5 },  // S5: ウメ婆
+        { hp: 1440, atkMult: 1.30, aiRate: 0.62, recLv: 6 },  // S6: タイラント
+        { hp: 1540, atkMult: 1.36, aiRate: 0.65, recLv: 7 },  // S7: Chickenleg
+        { hp: 1650, atkMult: 1.42, aiRate: 0.68, recLv: 8 },  // S8: 成金院長
+        { hp: 1720, atkMult: 1.46, aiRate: 0.70, recLv: 9 },  // S9: ベイビーゾンビ（大幅緩和）
+        { hp: 1800, atkMult: 1.50, aiRate: 0.72, recLv: 10 }, // S10: ドラゴン
+        { hp: 1780, atkMult: 1.22, aiRate: 0.73, recLv: 11 }, // S11: バクテリア
+        { hp: 1880, atkMult: 1.54, aiRate: 0.74, recLv: 12 }, // S12: ファントム
+        { hp: 1960, atkMult: 1.58, aiRate: 0.75, recLv: 13 }, // S13: クロノス
+        { hp: 1850, atkMult: 1.55, aiRate: 0.76, recLv: 14 }, // S14: パルス・ロボ
+        { hp: 2040, atkMult: 1.62, aiRate: 0.77, recLv: 15 }, // S15: 暴走自販機
+        { hp: 1980, atkMult: 1.60, aiRate: 0.78, recLv: 16 }, // S16: ドッペル
+        { hp: 2120, atkMult: 1.65, aiRate: 0.79, recLv: 17 }, // S17: ギガ・パンプ
+        { hp: 2350, atkMult: 1.75, aiRate: 0.82, recLv: 18 }  // S18: 魔王ラセツ
+    ];
+    for (var sIdx = 0; sIdx < CHALLENGE_STAGE_SCALING.length && sIdx < BALANCED_STAGE_SCALING.length; sIdx++) {
+        CHALLENGE_STAGE_SCALING[sIdx] = BALANCED_STAGE_SCALING[sIdx];
+    }
 
     CHAR_DISPLAY_NAMES.phantom   = 'ファントム';
     CHAR_DISPLAY_NAMES.chronos   = 'クロノス';
@@ -8797,8 +8823,11 @@ window.addEventListener('DOMContentLoaded', () => {
     CHAR_MOVE_BUTTON_LABELS.gigapump  = { light: 'バイセップス衝撃', heavy: 'シェイカー＆剛腕',   special: '覇気ボディプレス' };
     CHAR_MOVE_BUTTON_LABELS.venus     = { light: '超重力・体当たり', heavy: '酸性蒸気＆衝撃波',   special: '惑星落下＆時間差爆発' };
 
-    ['phantom', 'chronos', 'pulserobo', 'vending', 'doppel', 'gigapump'].forEach(function(id) {
-        CHAR_UNLOCK_REQ_DIFF[id] = 3; // チャレンジ【🥇激闘】勝利で解放（暗号2929でも即解放）
+    // ★チャレンジモードでは難易度制限をなくし、勝利すれば無条件でそのステージのキャラが解放されるよう全員 1 に設定
+    ALL_CHAR_IDS.forEach(function(id) {
+        if (id !== 'maou' && id !== 'venus') {
+            CHAR_UNLOCK_REQ_DIFF[id] = 1;
+        }
     });
 
     NEW_CHAR_LIST.forEach(function(id) {
@@ -8810,7 +8839,39 @@ window.addEventListener('DOMContentLoaded', () => {
         if (typeof challengeStageBestDiff[idx] !== 'number') challengeStageBestDiff[idx] = 0;
     });
 
-    // 2. キャラ選択カード・チャレンジステージバー・技表の動的生成
+    // ★闘気オーラの解放条件を「サバイバル連勝記録（3 / 5 / 10 / 15 / 20連勝）」に変更
+    var AURA_REQ_STREAK_MAP = {
+        none: 0,
+        blue: 3,
+        emerald: 5,
+        purple: 10,
+        crimson: 15,
+        gold: 20
+    };
+    AURA_CATALOG.forEach(function(a) {
+        a.reqStreak = AURA_REQ_STREAK_MAP[a.id] || 0;
+        if (a.reqStreak > 0) {
+            a.reqLabel = 'サバイバル ' + a.reqStreak + '連勝達成';
+        }
+    });
+
+    // 実績トロフィーの表記を全20キャラ＆Lv.20対応に更新
+    TROPHY_LIST.forEach(function(t) {
+        if (t.id === 'all_unlock') {
+            t.desc = '全20キャラクターを解放する';
+        }
+        if (t.id === 'max_stat') {
+            t.desc = 'いずれかの強化項目をLv.20にする';
+            t.check = function() {
+                return ALL_CHAR_IDS.some(function(id) {
+                    var u = charUpgrades[id] || { atk: 1, hp: 1, mtr: 1 };
+                    return u.atk >= MAX_UPG_LV || u.hp >= MAX_UPG_LV || u.mtr >= MAX_UPG_LV;
+                });
+            };
+        }
+    });
+
+    // 2. キャラ選択カード・チャレンジステージバー・技表・道場UIの動的生成
     function injectCustomCharsDOM() {
         var ladderBar = document.getElementById('challenge-ladder-bar');
         if (ladderBar && !document.getElementById('ladder-step-17')) {
@@ -8834,9 +8895,9 @@ window.addEventListener('DOMContentLoaded', () => {
             btn.setAttribute('onclick', (side === 'p1' ? 'selectP1' : 'selectP2') + "('" + id + "')");
             btn.className = "p-1.5 rounded-lg border-2 border-zinc-700 bg-zinc-900/80 text-left transition-all opacity-80 hover:opacity-100 cursor-pointer";
             btn.innerHTML =
-                '<div id="' + side + '-role-' + id + '" class="text-[9px] font-bold ' + meta.color + '">' + meta.role + '</div>' +
-                '<div id="' + side + '-name-' + id + '" class="text-[10px] font-black text-white leading-tight truncate">' + meta.name + '</div>' +
-                '<div id="' + side + '-desc-' + id + '" class="text-[8px] text-zinc-400 leading-tight mt-0.5 truncate">' + meta.desc + '</div>';
+                '<div id="' + side + '-role-' + id + '" class="text-[9px] font-bold text-zinc-500">🔒 SECRET</div>' +
+                '<div id="' + side + '-name-' + id + '" class="text-[10px] font-black text-white leading-tight truncate">？？？</div>' +
+                '<div id="' + side + '-desc-' + id + '" class="text-[8px] text-zinc-400 leading-tight mt-0.5 truncate">チャレンジで解放</div>';
 
             if (beforeMaou) {
                 maouCard.parentNode.insertBefore(btn, maouCard);
@@ -8855,6 +8916,41 @@ window.addEventListener('DOMContentLoaded', () => {
             });
             createOrReplaceCard(side, 'venus', false);
         });
+
+        // 強化道場・オーラタブの説明文を新仕様（最大Lv.20＆サバイバル連勝オーラ解放）に更新
+        var shopDescP = document.querySelector('#prog-tab-shop > p');
+        if (shopDescP) {
+            shopDescP.innerHTML = '💡 獲得した <strong>BP（Brawl Points）</strong> で各キャラの<strong>攻撃力・最大体力・ゲージ効率</strong>を<strong>最大Lv.20</strong>まで強化できます！<br><span class="text-amber-300 font-bold">※強化ステータスは「🏆チャレンジ」「🔥サバイバル」で有効になります（「⚔️フリー対戦」では強化なしの公平な標準ステータスになります）。</span>';
+        }
+        var auraDescBox = document.querySelector('#prog-tab-aura > div:first-child');
+        if (auraDescBox && !auraDescBox.dataset.patched) {
+            auraDescBox.dataset.patched = '1';
+            auraDescBox.innerHTML =
+                '<div class="flex flex-wrap items-center justify-between gap-1">' +
+                    '<span>✨ <strong>サバイバルモードの最高連勝記録</strong>に応じてオーラの<strong>BP購入権</strong>が解放されます！</span>' +
+                    '<span id="aura-tab-clear-badge" class="px-2 py-0.5 rounded bg-rose-950 border border-rose-400 text-[10px] font-black text-rose-200">🔥最高記録：' + bestSurvivalStreak + '連勝</span>' +
+                '</div>' +
+                '<div class="text-[11px] text-zinc-400">' +
+                    '💠<strong class="text-sky-300">3連勝</strong>：蒼焔 ／ 🌪️<strong class="text-emerald-300">5連勝</strong>：翠風 ／ 🔮<strong class="text-purple-300">10連勝</strong>：紫電 ／ 🔥<strong class="text-rose-300">15連勝</strong>：紅蓮 ／ ⚡<strong class="text-amber-300">20連勝</strong>：黄金の覇気' +
+                '</div>' +
+                '<div class="text-[10px] text-rose-400 font-bold">' +
+                    '※各オーラ固有のデバフ効果は「🏆チャレンジ」「🔥サバイバル」で発動します（「⚔️フリー対戦」は見た目のみ）。' +
+                '</div>';
+        }
+
+        // 難易度選択ボックスの取得と表示切り替え（サバイバルモード専用化）
+        var diffEasyBtn = document.getElementById('diff-easy');
+        if (diffEasyBtn && diffEasyBtn.parentNode) {
+            var diffContainer = diffEasyBtn.parentNode;
+            diffContainer.id = 'survival-diff-container';
+            var labelSpan = diffContainer.querySelector('span');
+            if (labelSpan) labelSpan.textContent = 'サバイバル難易度:';
+            if (gameMode === 'survival') {
+                diffContainer.classList.remove('hidden');
+            } else {
+                diffContainer.classList.add('hidden');
+            }
+        }
 
         var movesHeader = document.querySelector('#moves-modal h2');
         if (movesHeader) {
@@ -8882,7 +8978,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 3. 新キャラクター専用サウンドエフェクト
+    // 3. 新キャラクター専用サウンドエフェクト（元の音を完全維持）
     SoundEngine.prototype.phantomWaveSound = function() {
         this.init(); if (!this.seEnabled || !this.ctx) return;
         var now = this.ctx.currentTime, self = this;
@@ -8976,7 +9072,7 @@ window.addEventListener('DOMContentLoaded', () => {
             osc.frequency.setValueAtTime(freq * 1.8, now + idx * 0.04);
             osc.frequency.exponentialRampToValueAtTime(24, now + 0.52);
             g.gain.setValueAtTime(0.32, now + idx * 0.04);
-            g.gain.exponentialRampToValueAtTime(0.008, now + 0.54);
+            g.gain.exponentialRampToValueAtTime(0.008, now + idx * 0.04 + 0.54);
             osc.connect(g); g.connect(self.ctx.destination);
             osc.start(now + idx * 0.04); osc.stop(now + 0.55);
         });
@@ -8995,7 +9091,7 @@ window.addEventListener('DOMContentLoaded', () => {
     };
 
     // =========================================================================
-    // 4. 各キャラクターのヘッド＆全身グラフィック描画関数
+    // 4. 各キャラクターのヘッド＆全身グラフィック描画関数（元の見た目を100%維持）
     // =========================================================================
 
     // ① 👻 ファントム
@@ -9619,44 +9715,6 @@ window.addEventListener('DOMContentLoaded', () => {
         origDrawRealisticHead(ctx, id, x, y, scale, isHit);
     };
 
-    // 既存4キャラ（タイラント・成金院長・ベイビーゾンビ・ドラゴン）の描画補完
-    if (typeof Fighter.prototype.drawTyrant !== 'function') {
-        Fighter.prototype.drawTyrant = function(ctx) {
-            var hipY = -102 + Math.sin(this.animTime * 0.12) * 2;
-            drawRoundedLimb(ctx, -10, hipY, -24, -5, 13, 10, '#1e3a8a', '#0f172a');
-            drawRoundedLimb(ctx, 10, hipY, 28, -5, 13, 10, '#1d4ed8', '#0f172a');
-            ctx.fillStyle = '#b91c1c'; ctx.beginPath(); ctx.roundRect(-24, hipY - 70, 48, 66, 10); ctx.fill();
-            drawTyrantHead(ctx, 2, hipY - 74, 1.0, this.state === 'hit', this.state === 'attack');
-        };
-    }
-    if (typeof Fighter.prototype.drawIncho !== 'function') {
-        Fighter.prototype.drawIncho = function(ctx) {
-            var hipY = -92 + Math.sin(this.animTime * 0.12) * 2;
-            drawRoundedLimb(ctx, -10, hipY, -22, -5, 14, 11, '#eab308', '#713f12');
-            drawRoundedLimb(ctx, 10, hipY, 24, -5, 14, 11, '#facc15', '#713f12');
-            ctx.fillStyle = '#ca8a04'; ctx.beginPath(); ctx.roundRect(-28, hipY - 68, 56, 64, 14); ctx.fill();
-            drawInchoHead(ctx, 2, hipY - 72, 1.0, this.state === 'hit', this.state === 'attack');
-        };
-    }
-    if (typeof Fighter.prototype.drawBaby !== 'function') {
-        Fighter.prototype.drawBaby = function(ctx) {
-            var hipY = -66 + Math.sin(this.animTime * 0.18) * 2;
-            drawRoundedLimb(ctx, -8, hipY, -18, -4, 11, 9, '#65a30d', '#1a2e05');
-            drawRoundedLimb(ctx, 8, hipY, 20, -4, 11, 9, '#84cc16', '#1a2e05');
-            ctx.fillStyle = '#84cc16'; ctx.beginPath(); ctx.roundRect(-19, hipY - 50, 38, 36, 10); ctx.fill();
-            drawBabyZombieHead(ctx, 2, hipY - 52, 1.0, this.state === 'hit', this.state === 'attack');
-        };
-    }
-    if (typeof Fighter.prototype.drawDragon !== 'function') {
-        Fighter.prototype.drawDragon = function(ctx) {
-            var hipY = -108;
-            drawRoundedLimb(ctx, -12, hipY, -24, -6, 16, 12, '#991b1b', '#450a0a');
-            drawRoundedLimb(ctx, 12, hipY, 26, -6, 16, 12, '#dc2626', '#450a0a');
-            ctx.fillStyle = '#b91c1c'; ctx.beginPath(); ctx.roundRect(-26, hipY - 68, 52, 68, 14); ctx.fill();
-            drawDragonHead(ctx, 12, hipY - 72, 1.15, this.state === 'hit', this.state === 'attack' ? 0.9 : 0.25);
-        };
-    }
-
     var venusDelayedBombs = [];
     var venusVisualExplosions = [];
     var doppelShadowQueue = [];
@@ -9741,23 +9799,28 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 6. ステータス計算
+    // 6. ステータス計算（チャレンジでは難易度による敵ステータス変動をなくし、サバイバルでのみ難易度を反映）
     var origComputeFighterCombatStats = computeFighterCombatStats;
     computeFighterCombatStats = function(id, isP1) {
-        if (id === 'venus') {
-            var upgV = charUpgrades.venus || { atk: 1, hp: 1, mtr: 1 };
-            if (gameMode === 'vs') return { maxHp: 3000, atkMult: 1.88, mtrMult: 1.0, recLv: 10 };
-            if (isP1) return { maxHp: 6340 + (upgV.hp - 1) * 220, atkMult: Number((3.47 + (upgV.atk - 1) * 0.12).toFixed(2)), mtrMult: Number((1.40 + (upgV.mtr - 1) * 0.09).toFixed(2)), recLv: 10 };
-            return { maxHp: 6340, atkMult: 3.47, mtrMult: 1.65, recLv: 10 };
-        }
-        if (['phantom', 'chronos', 'pulserobo', 'vending', 'doppel', 'gigapump'].includes(id)) {
-            var upg = charUpgrades[id] || { atk: 1, hp: 1, mtr: 1 };
-            var baseHpMap  = { phantom: 1220, chronos: 1280, pulserobo: 1180, vending: 1420, doppel: 1240, gigapump: 1460 };
-            var baseAtkMap = { phantom: 1.20, chronos: 1.22, pulserobo: 1.18, vending: 1.25, doppel: 1.15, gigapump: 1.26 };
-            if (gameMode === 'vs') {
-                return { maxHp: baseHpMap[id], atkMult: baseAtkMap[id], mtrMult: 1.0, recLv: 1 };
+        var upg = charUpgrades[id] || { atk: 1, hp: 1, mtr: 1 };
+
+        if (gameMode === 'vs') {
+            if (id === 'venus') return { maxHp: 3000, atkMult: 1.88, mtrMult: 1.0, recLv: 10 };
+            if (['phantom', 'chronos', 'pulserobo', 'vending', 'doppel', 'gigapump'].includes(id)) {
+                var vsHpMap  = { phantom: 1220, chronos: 1280, pulserobo: 1180, vending: 1420, doppel: 1240, gigapump: 1460 };
+                var vsAtkMap = { phantom: 1.20, chronos: 1.22, pulserobo: 1.18, vending: 1.25, doppel: 1.15, gigapump: 1.26 };
+                return { maxHp: vsHpMap[id], atkMult: vsAtkMap[id], mtrMult: 1.0, recLv: 1 };
             }
-            if (isP1) {
+            return origComputeFighterCombatStats(id, isP1);
+        }
+
+        if (isP1) {
+            if (id === 'venus') {
+                return { maxHp: 6340 + (upg.hp - 1) * 220, atkMult: Number((3.47 + (upg.atk - 1) * 0.12).toFixed(2)), mtrMult: Number((1.40 + (upg.mtr - 1) * 0.09).toFixed(2)), recLv: MAX_UPG_LV };
+            }
+            if (['phantom', 'chronos', 'pulserobo', 'vending', 'doppel', 'gigapump'].includes(id)) {
+                var baseHpMap  = { phantom: 1220, chronos: 1280, pulserobo: 1180, vending: 1420, doppel: 1240, gigapump: 1460 };
+                var baseAtkMap = { phantom: 1.20, chronos: 1.22, pulserobo: 1.18, vending: 1.25, doppel: 1.15, gigapump: 1.26 };
                 return {
                     maxHp: baseHpMap[id] + (upg.hp - 1) * 75,
                     atkMult: Number((baseAtkMap[id] + (upg.atk - 1) * 0.07).toFixed(2)),
@@ -9765,11 +9828,36 @@ window.addEventListener('DOMContentLoaded', () => {
                     recLv: Math.round((upg.atk + upg.hp + upg.mtr) / 3)
                 };
             }
+            return origComputeFighterCombatStats(id, true);
+        } else {
+            // CPU側ステータス
+            if (gameMode === 'challenge') {
+                // チャレンジモードは難易度選択なし（一定のステージスケーリング）
+                var st = CHALLENGE_STAGE_SCALING[Math.min(challengeStageIndex, CHALLENGE_STAGE_SCALING.length - 1)];
+                return {
+                    maxHp: st.hp,
+                    atkMult: st.atkMult,
+                    mtrMult: 1.0 + challengeStageIndex * 0.04,
+                    recLv: st.recLv
+                };
+            } else {
+                // サバイバルモード：選択中の難易度（入門 / 標準 / 激闘）を敵の強さに反映
+                var diffMult = cpuDifficulty === 'easy' ? 0.85 : (cpuDifficulty === 'hard' ? 1.15 : 1.0);
+                if (id === 'venus') {
+                    return { maxHp: Math.round(5200 * diffMult), atkMult: Number((2.85 * diffMult).toFixed(2)), mtrMult: 1.5, recLv: 20 };
+                }
+                var baseStats = origComputeFighterCombatStats(id, false);
+                return {
+                    maxHp: Math.round(baseStats.maxHp * diffMult),
+                    atkMult: Number((baseStats.atkMult * diffMult).toFixed(2)),
+                    mtrMult: baseStats.mtrMult,
+                    recLv: baseStats.recLv
+                };
+            }
         }
-        return origComputeFighterCombatStats(id, isP1);
     };
 
-    // 7. 技データの定義
+    // 7. 技データの定義（元の技を100%維持）
     var origGetMoveData = Fighter.prototype.getMoveData;
     Fighter.prototype.getMoveData = function(type) {
         var id = this.id;
@@ -10069,33 +10157,181 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 11. チャレンジモード・サバイバル・UI表示の同期
-    var origIsChallengeStageSelectable = isChallengeStageSelectable;
+    // =========================================================================
+    // 11. 5大仕様改善 ＋ サバイバルモード敵出現プール＆ボス出現設定
+    // =========================================================================
+
+    // ★勝利したステージの次までしか選択・表示できないよう厳密化（負けても次は絶対に開かない）
     isChallengeStageSelectable = function(stageIdx) {
-        var cid = CHALLENGE_LADDER[stageIdx];
-        if (['phantom', 'chronos', 'pulserobo', 'vending', 'doppel', 'gigapump'].includes(cid)) return true;
-        return origIsChallengeStageSelectable(stageIdx);
+        if (stageIdx <= 0) return true;
+        if (stageIdx >= CHALLENGE_LADDER.length) return false;
+        // 暗号2929等で全キャラ解放済みの場合は全ステージ選択可
+        var allUnlocked = ALL_CHAR_IDS.every(function(id) { return !!vsUnlocked[id]; });
+        if (allUnlocked) return true;
+
+        var prevCid = CHALLENGE_LADDER[stageIdx - 1];
+        var prevCleared = (challengeStageBestDiff[stageIdx - 1] || 0) > 0 || !!challengeUnlocked[prevCid];
+        var thisCleared = (challengeStageBestDiff[stageIdx] || 0) > 0;
+        return !!(prevCleared || thisCleared);
     };
 
-    var origGetCharUnlockReqText = getCharUnlockRequirementText;
     getCharUnlockRequirementText = function(charId) {
+        if (charId === 'maou') return '🔥サバイバル20連勝で解放';
         if (charId === 'venus') return '🔥サバイバル30戦目撃破で解放';
-        return origGetCharUnlockReqText(charId);
+        return '🏆チャレンジモード勝利で解放';
     };
 
-    var origShowSecretToast = showSecretToast;
     showSecretToast = function(charId) {
-        if (charId === 'venus') {
-            var toast = document.getElementById('secret-notice-toast');
-            if (toast) {
-                toast.textContent = '🔒『ヴィーナス』はサバイバルモード30戦目に出現し、撃破するとプレイアブル解放されます！（チャレンジには登場しません）';
-                toast.classList.remove('hidden');
-                if (secretToastTimer) clearTimeout(secretToastTimer);
-                secretToastTimer = setTimeout(function() { toast.classList.add('hidden'); }, 2800);
+        var toast = document.getElementById('secret-notice-toast');
+        if (!toast) return;
+        if (charId === 'maou') {
+            toast.textContent = '🔒『魔王ラセツ』はサバイバルモードで20連勝を達成すると解放されます！';
+        } else if (charId === 'venus') {
+            toast.textContent = '🔒『ヴィーナス』はサバイバルモード30戦目に出現し、撃破すると解放されます！';
+        } else {
+            toast.textContent = '🔒 このキャラクターはシークレットです！チャレンジモードで前の対戦相手に勝利すると開きます！';
+        }
+        toast.classList.remove('hidden');
+        if (secretToastTimer) clearTimeout(secretToastTimer);
+        secretToastTimer = setTimeout(function() { toast.classList.add('hidden'); }, 2800);
+    };
+
+    // ★強化道場の上限を Lv.10 ➔ Lv.20 に引き上げ
+    renderUpgradeShopList = function() {
+        var container = document.getElementById('upgrade-char-list');
+        if (!container) return;
+        container.innerHTML = ALL_CHAR_IDS.map(function(id) {
+            var unlocked = vsUnlocked[id] || challengeUnlocked[id];
+            var up = charUpgrades[id] || { atk: 1, hp: 1, mtr: 1 };
+            var meta = CHAR_CARD_META[id];
+            if (!unlocked) {
+                var unlockHint = getCharUnlockRequirementText(id);
+                return '<div class="p-3 rounded-xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-between opacity-50">' +
+                    '<div><div class="text-xs font-bold text-zinc-500">🔒 SECRET FIGHTER</div><div class="text-sm font-black text-zinc-400">？？？</div></div>' +
+                    '<span class="text-[11px] text-zinc-400 font-bold">' + unlockHint + '</span>' +
+                '</div>';
             }
+            var atkCost = getUpgradeCost(up.atk);
+            var hpCost = getUpgradeCost(up.hp);
+            var mtrCost = getUpgradeCost(up.mtr);
+            return '<div class="p-3 rounded-xl bg-zinc-950/95 border border-zinc-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">' +
+                '<div>' +
+                    '<div class="text-[10px] font-bold ' + meta.color + '">' + meta.role + '</div>' +
+                    '<div class="text-sm font-black text-white">' + meta.name + '</div>' +
+                    '<div class="text-[10px] text-zinc-400">攻撃:+' + ((up.atk - 1) * 6) + '% / HP:+' + ((up.hp - 1) * 65) + ' / ゲージ:+' + ((up.mtr - 1) * 8) + '% (最大Lv.' + MAX_UPG_LV + ')</div>' +
+                '</div>' +
+                '<div class="grid grid-cols-3 gap-1.5">' +
+                    '<button onclick="buyStatUpgrade(\'' + id + '\', \'atk\')" class="px-2 py-1.5 rounded-lg border ' + (up.atk >= MAX_UPG_LV ? 'border-emerald-500 bg-emerald-950/40 text-emerald-300' : 'border-sky-500/70 bg-sky-950/60 hover:bg-sky-900 text-white') + ' text-center cursor-pointer">' +
+                        '<div class="text-[10px] font-black text-sky-300">⚔️攻撃 Lv.' + up.atk + '/' + MAX_UPG_LV + '</div>' +
+                        '<div class="text-[9px] text-amber-300 font-bold">' + (up.atk >= MAX_UPG_LV ? 'MAX' : atkCost + ' BP') + '</div>' +
+                    '</button>' +
+                    '<button onclick="buyStatUpgrade(\'' + id + '\', \'hp\')" class="px-2 py-1.5 rounded-lg border ' + (up.hp >= MAX_UPG_LV ? 'border-emerald-500 bg-emerald-950/40 text-emerald-300' : 'border-emerald-500/70 bg-emerald-950/60 hover:bg-emerald-900 text-white') + ' text-center cursor-pointer">' +
+                        '<div class="text-[10px] font-black text-emerald-300">❤️体力 Lv.' + up.hp + '/' + MAX_UPG_LV + '</div>' +
+                        '<div class="text-[9px] text-amber-300 font-bold">' + (up.hp >= MAX_UPG_LV ? 'MAX' : hpCost + ' BP') + '</div>' +
+                    '</button>' +
+                    '<button onclick="buyStatUpgrade(\'' + id + '\', \'mtr\')" class="px-2 py-1.5 rounded-lg border ' + (up.mtr >= MAX_UPG_LV ? 'border-emerald-500 bg-emerald-950/40 text-emerald-300' : 'border-purple-500/70 bg-purple-950/60 hover:bg-purple-900 text-white') + ' text-center cursor-pointer">' +
+                        '<div class="text-[10px] font-black text-purple-300">⚡ゲージ Lv.' + up.mtr + '/' + MAX_UPG_LV + '</div>' +
+                        '<div class="text-[9px] text-amber-300 font-bold">' + (up.mtr >= MAX_UPG_LV ? 'MAX' : mtrCost + ' BP') + '</div>' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+    };
+
+    window.buyStatUpgrade = function(charId, statKey) {
+        sfx.init();
+        var up = charUpgrades[charId];
+        if (!up || up[statKey] >= MAX_UPG_LV) { sfx.block(); return; }
+        var cost = getUpgradeCost(up[statKey]);
+        if (brawlPoints < cost) { sfx.hitLight(); return; }
+        brawlPoints -= cost;
+        up[statKey]++;
+        sfx.superFlash();
+        checkTrophies();
+        updateBPDisplays();
+        renderUpgradeShopList();
+        saveGameProgress();
+    };
+
+    // ★闘気オーラショップをサバイバル連勝記録（3 / 5 / 10 / 15 / 20連勝）で解放する仕様に変更
+    var origUpdateBPDisplays = updateBPDisplays;
+    updateBPDisplays = function() {
+        origUpdateBPDisplays();
+        var auraBadge = document.getElementById('aura-tab-clear-badge');
+        if (auraBadge) {
+            auraBadge.textContent = '🔥サバイバル最高：' + bestSurvivalStreak + '連勝';
+            auraBadge.className = 'px-2 py-0.5 rounded bg-rose-950 border border-rose-400 text-[10px] font-black text-rose-200';
+        }
+        var chalBest = document.getElementById('title-challenge-best');
+        if (chalBest) {
+            var clearedCount = 0;
+            for (var i = 0; i < CHALLENGE_LADDER.length; i++) {
+                if ((challengeStageBestDiff[i] || 0) > 0) clearedCount++;
+            }
+            chalBest.textContent = challengeBossCleared ? '🏆全18ステージ制覇!' : '🏆進行:' + clearedCount + '/18';
+        }
+    };
+
+    renderAuraShopList = function() {
+        var container = document.getElementById('aura-shop-list');
+        if (!container) return;
+        updateBPDisplays();
+        container.innerHTML = AURA_CATALOG.map(function(a) {
+            var owned = !!unlockedAuras[a.id];
+            var equipped = equippedAuraId === a.id;
+            var reqSt = a.reqStreak || 0;
+            var canPurchase = bestSurvivalStreak >= reqSt;
+            var canAfford = brawlPoints >= a.cost;
+
+            var btnHtml = '';
+            if (equipped) {
+                btnHtml = '<button onclick="buyOrEquipAura(\'' + a.id + '\')" class="px-3 py-1.5 rounded-xl font-black text-xs whitespace-nowrap cursor-pointer flex-shrink-0 bg-amber-400 text-black shadow">✓ 装着中</button>';
+            } else if (owned) {
+                btnHtml = '<button onclick="buyOrEquipAura(\'' + a.id + '\')" class="px-3 py-1.5 rounded-xl font-black text-xs whitespace-nowrap cursor-pointer flex-shrink-0 bg-sky-600 hover:bg-sky-500 text-white shadow">装着する</button>';
+            } else if (!canPurchase) {
+                btnHtml = '<button onclick="buyOrEquipAura(\'' + a.id + '\')" class="px-2.5 py-1.5 rounded-xl font-bold text-[10px] whitespace-nowrap cursor-not-allowed flex-shrink-0 bg-zinc-900 text-rose-300 border border-zinc-700">🔒 サバイバル' + reqSt + '連勝で解放</button>';
+            } else {
+                btnHtml = '<button onclick="buyOrEquipAura(\'' + a.id + '\')" class="px-3 py-1.5 rounded-xl font-black text-xs whitespace-nowrap cursor-pointer flex-shrink-0 ' + (canAfford ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black shadow hover:brightness-110' : 'bg-zinc-800 text-amber-300 border border-amber-500/60') + '">💰 ' + a.cost + ' BPで購入</button>';
+            }
+
+            return '<div class="p-3 rounded-xl bg-zinc-950/90 border-2 ' + (equipped ? 'border-amber-400' : (canPurchase ? 'border-zinc-700' : 'border-zinc-800/80 opacity-75')) + ' flex items-center justify-between gap-2">' +
+                '<div class="min-w-0">' +
+                    '<div class="flex items-center gap-1.5 flex-wrap">' +
+                        '<span class="px-1.5 py-0.5 rounded border text-[9px] font-black ' + a.rarityCls + '">' + a.rarity + '</span>' +
+                        '<span class="text-xs sm:text-sm font-black text-white">' + a.name + '</span>' +
+                        (a.id !== 'none' ? '<span class="px-1.5 py-0.5 rounded bg-rose-950/90 border border-rose-500/70 text-[9px] font-black text-rose-300">' + a.debuffLabel + '</span>' : '') +
+                    '</div>' +
+                    '<div class="text-[10px] text-zinc-300 mt-1 leading-snug">' + a.desc + '</div>' +
+                    (reqSt > 0 ? '<div class="text-[10px] font-bold mt-1 ' + (canPurchase ? 'text-emerald-400' : 'text-amber-300/90') + '">' + (canPurchase ? '🔓 購入権解放済' : '🔒 解放条件') + '：サバイバル ' + reqSt + '連勝達成 (現在最高 ' + bestSurvivalStreak + '連勝)</div>' : '') +
+                '</div>' +
+                btnHtml +
+            '</div>';
+        }).join('');
+    };
+
+    window.buyOrEquipAura = function(auraId) {
+        sfx.init();
+        var aura = AURA_CATALOG.find(function(a) { return a.id === auraId; });
+        if (!aura) return;
+        if (unlockedAuras[auraId]) {
+            equippedAuraId = auraId;
+            sfx.block();
+            renderAuraShopList();
+            saveGameProgress();
             return;
         }
-        origShowSecretToast(charId);
+        if (bestSurvivalStreak < (aura.reqStreak || 0)) {
+            sfx.hitLight();
+            return;
+        }
+        if (brawlPoints < aura.cost) { sfx.hitLight(); return; }
+        brawlPoints -= aura.cost;
+        unlockedAuras[auraId] = true;
+        equippedAuraId = auraId;
+        sfx.superFlash();
+        updateBPDisplays();
+        renderAuraShopList();
+        saveGameProgress();
     };
 
     var origSelectP2 = window.selectP2;
@@ -10107,16 +10343,64 @@ window.addEventListener('DOMContentLoaded', () => {
         origSelectP2(charId);
     };
 
+    // モード開始時にチャレンジステージの位置を「未クリアの最初のステージ（到達済み最新ステージ）」に合わせる
+    var origOpenMode = window.openMode;
+    window.openMode = function(mode) {
+        if (mode === 'challenge') {
+            var latestReach = 0;
+            for (var i = 0; i < CHALLENGE_LADDER.length; i++) {
+                if (isChallengeStageSelectable(i)) latestReach = i;
+            }
+            if (!isChallengeStageSelectable(challengeStageIndex)) {
+                challengeStageIndex = latestReach;
+            }
+        }
+        origOpenMode(mode);
+    };
+
+    // ★サバイバルモードの通常敵順序リスト（龍〜成金院長までは初期からランダム出現、ベイビーゾンビ以降は解放されたキャラまで出現）
+    var SURVIVAL_NORMAL_ORDER = [
+        'ryuji', 'takeshi', 'sayuri', 'hanako', 'keita',
+        'ume', 'tyrant', 'gallo', 'incho',
+        'baby', 'dragon', 'bacteria', 'phantom', 'chronos',
+        'pulserobo', 'vending', 'doppel', 'gigapump'
+    ];
+    var INCHO_ORDER_IDX = SURVIVAL_NORMAL_ORDER.indexOf('incho'); // 8 (成金院長 / 悪徳院長)
+
     startNextSurvivalOpponent = function() {
         var keepHp = Math.min(player1.maxHp, player1.hp + Math.floor(player1.maxHp * 0.25));
         var keepMeter = player1.meter;
-        var pool = ALL_CHAR_IDS.filter(function(id) { return id !== 'maou' && id !== 'venus'; });
 
+        // 悪徳院長(incho)より先のキャラがどこまで解放されているかを判定
+        var maxUnlockedIdx = INCHO_ORDER_IDX;
+        var isBeyondInchoUnlocked = false;
+        for (var i = 0; i < SURVIVAL_NORMAL_ORDER.length; i++) {
+            var cid = SURVIVAL_NORMAL_ORDER[i];
+            if (vsUnlocked[cid] || challengeUnlocked[cid]) {
+                if (i > maxUnlockedIdx) {
+                    maxUnlockedIdx = i;
+                }
+                if (i > INCHO_ORDER_IDX) {
+                    isBeyondInchoUnlocked = true;
+                }
+            }
+        }
+
+        // ・悪徳院長を含む悪徳院長までのキャラが解放されていない（または悪徳院長までしか解放されていない）状態：
+        //   ➔ 悪徳院長(incho)までの9キャラがランダムに出現
+        // ・悪徳院長より先が解放されている場合：
+        //   ➔ 解放されているキャラクターまででランダムに出現
+        var pool = SURVIVAL_NORMAL_ORDER.slice(0, maxUnlockedIdx + 1);
+
+        var nextWaveNumber = survivalStreak + 1; // 次の試合が何戦目か（19連勝後の次が第20戦、29連勝後の次が第30戦）
         var nextCpuId;
-        if (survivalStreak === 29) {
-            nextCpuId = 'venus';
-        } else if (survivalStreak > 0 && (survivalStreak + 1) % 5 === 0) {
+
+        if (nextWaveNumber === 20) {
+            // 20戦目に魔王ラセツが登場！
             nextCpuId = 'maou';
+        } else if (nextWaveNumber === 30 && isBeyondInchoUnlocked) {
+            // 悪徳院長より先が解放されている場合は、30戦目にヴィーナスが出現！
+            nextCpuId = 'venus';
         } else {
             nextCpuId = pool[Math.floor(Math.random() * pool.length)];
         }
@@ -10139,8 +10423,12 @@ window.addEventListener('DOMContentLoaded', () => {
             bannerMessage = '🪐 30戦目・超強敵『ヴィーナス』降臨!!\n撃破すればプレイアブル解放!!';
             bannerTimer = 140;
             sfx.venusSound();
+        } else if (nextCpuId === 'maou') {
+            bannerMessage = '👹 20戦目・宿命の決戦『魔王ラセツ』降臨!!\n勝利すれば20連勝達成＆魔王解放!!';
+            bannerTimer = 140;
+            sfx.demonRoar();
         } else {
-            bannerMessage = '🔥 第' + (survivalStreak + 1) + '戦 VS ' + player2.name + '!!';
+            bannerMessage = '🔥 第' + nextWaveNumber + '戦 VS ' + player2.name + '!!';
             bannerTimer = 85;
             sfx.superFlash();
         }
@@ -10149,7 +10437,18 @@ window.addEventListener('DOMContentLoaded', () => {
     var origHandleRoundEnd = handleRoundEnd;
     handleRoundEnd = function(roundWinner) {
         var defeatedVenusInSurvival = (gameMode === 'survival' && roundWinner.isP1 && player2.id === 'venus');
+        var prevBestStreak = bestSurvivalStreak;
         origHandleRoundEnd(roundWinner);
+
+        // サバイバルで連勝記録を更新し、3 / 5 / 10 / 15 / 20連勝のオーラ購入権を達成した時のお知らせ
+        if (gameMode === 'survival' && roundWinner.isP1) {
+            var newlyUnlockedAura = AURA_CATALOG.find(function(a) {
+                return a.reqStreak > 0 && prevBestStreak < a.reqStreak && bestSurvivalStreak >= a.reqStreak;
+            });
+            if (newlyUnlockedAura) {
+                spawnCallout('✨ オーラ購入権解放：' + newlyUnlockedAura.name + '!!', V_WIDTH / 2, 145, '#facc15');
+            }
+        }
 
         if (defeatedVenusInSurvival) {
             var newlyUnlocked = !challengeUnlocked.venus || !vsUnlocked.venus;
@@ -10189,15 +10488,28 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // ★キャラ選択画面・ステージバーのシークレット表示を完全修正（未解放・未到達はすべて確実に 🔒 SECRET / ？？？）
     var origRefreshCharacterCardsUI = refreshCharacterCardsUI;
     refreshCharacterCardsUI = function() {
         injectCustomCharsDOM();
         origRefreshCharacterCardsUI();
 
+        // 難易度選択UIはサバイバルモードのみ表示
+        var diffContainer = document.getElementById('survival-diff-container');
+        if (diffContainer) {
+            if (gameMode === 'survival') diffContainer.classList.remove('hidden');
+            else diffContainer.classList.add('hidden');
+        }
+
         if (gameMode === 'challenge') {
+            var titleEl = document.getElementById('select-mode-title');
             var subEl = document.getElementById('select-mode-subtitle');
+            var stageNum = challengeStageIndex + 1;
+            if (titleEl) {
+                titleEl.textContent = '🏆 CHALLENGE MODE - STAGE ' + stageNum + ' / ' + CHALLENGE_LADDER.length;
+            }
             if (subEl) {
-                subEl.textContent = '全18ステージ！S12〜S17の新キャラ6体も上のボタンからいつでも直接選択して挑戦できます！';
+                subEl.textContent = '勝利すると対戦相手がプレイアブル解放され、次のステージのシークレットが開きます！';
             }
             var shortMap = {
                 takeshi: 'B-PAN', sayuri: 'SAYURI', hanako: 'HANAKO', keita: '兄やん',
@@ -10214,55 +10526,137 @@ window.addEventListener('DOMContentLoaded', () => {
                 var cleared = (cid === 'maou' ? challengeBossCleared : challengeUnlocked[cid]) || bestStageRank > 0;
                 var isCurrent = idx === challengeStageIndex;
                 var selectable = isChallengeStageSelectable(idx);
-                var shownName = (cleared || isCurrent || selectable) ? (shortMap[cid] || cid) : '？？？';
-                var diffBadgeStr = bestStageRank > 0 ? DIFF_META_BY_RANK[bestStageRank].short : (cleared ? '✅' : '');
-                stepEl.textContent = stageTitle + ':' + (cleared ? diffBadgeStr : (isCurrent ? '🔥' : (selectable ? '⚔️' : '🔒'))) + shownName;
+                // 未到達ステージ（!selectable）は確実に「？？？ 」でマスク
+                var shownName = selectable ? (shortMap[cid] || cid) : '？？？';
+                stepEl.textContent = stageTitle + ':' + (cleared ? '✅' : (isCurrent ? '🔥' : (selectable ? '⚔️' : '🔒'))) + shownName;
+                stepEl.className = isCurrent
+                    ? "text-center py-1 px-1 rounded-lg bg-amber-500/30 border-2 border-amber-400 text-amber-200 font-black shadow whitespace-nowrap truncate cursor-pointer active:scale-95 transition-transform"
+                    : (cleared
+                        ? "text-center py-1 px-1 rounded-lg bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-500/80 text-emerald-300 font-bold whitespace-nowrap truncate cursor-pointer active:scale-95 transition-transform"
+                        : (selectable
+                            ? "text-center py-1 px-1 rounded-lg bg-rose-950/70 hover:bg-rose-900/80 border border-rose-500/80 text-rose-200 font-bold whitespace-nowrap truncate cursor-pointer active:scale-95 transition-transform"
+                            : "text-center py-1 px-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-500 font-bold whitespace-nowrap truncate opacity-55 cursor-not-allowed"));
             });
+        } else if (gameMode === 'survival') {
+            var curDiffMeta = DIFF_META_BY_RANK[DIFF_RANK_MAP[cpuDifficulty] || 2];
+            var titleElS = document.getElementById('select-mode-title');
+            var subElS = document.getElementById('select-mode-subtitle');
+            if (titleElS) titleElS.textContent = '🔥 SURVIVAL MODE 【難易度:' + curDiffMeta.short + ' / 最高:' + bestSurvivalStreak + '連勝】';
+            if (subElS) subElS.textContent = '3/5/10/15/20連勝で闘気オーラ解放！20戦目に魔王ラセツ、悪徳院長より先解放時は30戦目にヴィーナス出現！';
         }
 
-        ['p1', 'p2'].forEach(function(side) {
-            NEW_CHAR_LIST.forEach(function(id) {
-                var meta = CHAR_CARD_META[id];
-                var rEl = document.getElementById(side + '-role-' + id);
-                var nEl = document.getElementById(side + '-name-' + id);
-                var dEl = document.getElementById(side + '-desc-' + id);
-                if (nEl) nEl.textContent = meta.name;
+        // P1・CPUカードのシークレット表示を全20キャラ厳密に適用
+        ALL_CHAR_IDS.forEach(function(id) {
+            var meta = CHAR_CARD_META[id];
 
-                if (id === 'venus') {
-                    var isVUnlocked = (side === 'p1') ? isCharUnlockedForCurrentMode('venus', false) : (gameMode === 'challenge' ? false : !!vsUnlocked.venus);
-                    if (gameMode === 'challenge' && side === 'p2') {
-                        if (rEl) { rEl.textContent = '🪐 金星(サバ限定)'; rEl.className = 'text-[9px] font-bold text-amber-300'; }
-                        if (dEl) dEl.textContent = 'サバイバル30戦目';
-                    } else if (!isVUnlocked) {
-                        if (rEl) { rEl.textContent = '🔒 ' + meta.role; rEl.className = 'text-[9px] font-bold text-amber-300/70'; }
-                        if (dEl) dEl.textContent = 'サバイバル30戦目';
+            // --- P1側カード ---
+            var p1Unlocked = isCharUnlockedForCurrentMode(id, false);
+            var p1Card = document.getElementById('p1-card-' + id);
+            var p1Role = document.getElementById('p1-role-' + id);
+            var p1Name = document.getElementById('p1-name-' + id);
+            var p1Desc = document.getElementById('p1-desc-' + id);
+            if (p1Card && p1Role && p1Name && p1Desc) {
+                if (p1Unlocked) {
+                    var up = charUpgrades[id] || { atk: 1, hp: 1, mtr: 1 };
+                    var totalLv = up.atk + up.hp + up.mtr - 2;
+                    p1Role.textContent = meta.role + (gameMode !== 'vs' && totalLv > 1 ? ' ★Lv.' + totalLv : '');
+                    p1Role.className = 'text-[9px] font-bold ' + meta.color;
+                    p1Name.textContent = meta.name;
+                    p1Desc.textContent = meta.desc;
+                    p1Card.className = (id === selectedP1Id)
+                        ? "p-1.5 rounded-lg border-2 border-sky-400 bg-sky-950/80 text-left transition-all shadow cursor-pointer"
+                        : "p-1.5 rounded-lg border-2 border-zinc-700 bg-zinc-900/80 text-left transition-all opacity-80 hover:opacity-100 cursor-pointer";
+                } else {
+                    p1Role.textContent = '🔒 SECRET';
+                    p1Role.className = 'text-[9px] font-bold text-zinc-500';
+                    p1Name.textContent = '？？？';
+                    p1Desc.textContent = id === 'maou' ? 'サバイバル20連勝' : (id === 'venus' ? 'サバイバル30戦目' : 'チャレンジで解放');
+                    p1Card.className = "p-1.5 rounded-lg border-2 border-zinc-800 bg-zinc-950/90 text-left transition-all opacity-50 cursor-not-allowed";
+                }
+            }
+
+            // --- CPU（P2）側カード ---
+            var p2Card = document.getElementById('p2-card-' + id);
+            var p2Role = document.getElementById('p2-role-' + id);
+            var p2Name = document.getElementById('p2-name-' + id);
+            var p2Desc = document.getElementById('p2-desc-' + id);
+            if (p2Card && p2Role && p2Name && p2Desc) {
+                if (gameMode === 'challenge') {
+                    if (id === 'venus') {
+                        // ヴィーナスはチャレンジ非登場（未解放なら完全に？？？でシークレット表示）
+                        if (vsUnlocked.venus) {
+                            p2Role.textContent = '🪐 金星(サバ限定)';
+                            p2Role.className = 'text-[9px] font-bold text-amber-300';
+                            p2Name.textContent = meta.name;
+                            p2Desc.textContent = 'サバイバル限定';
+                        } else {
+                            p2Role.textContent = '🔒 SECRET';
+                            p2Role.className = 'text-[9px] font-bold text-zinc-500';
+                            p2Name.textContent = '？？？';
+                            p2Desc.textContent = 'サバイバル30戦目';
+                        }
+                        p2Card.className = "p-1.5 rounded-lg border-2 border-zinc-800 bg-zinc-950/80 text-left transition-all opacity-40 cursor-not-allowed";
                     } else {
-                        if (rEl) { rEl.textContent = meta.role; rEl.className = 'text-[9px] font-bold ' + meta.color; }
-                        if (dEl) dEl.textContent = meta.desc;
+                        var ladderIdx = CHALLENGE_LADDER.indexOf(id);
+                        var isTargetBoss = (id === selectedP2Id);
+                        var isStageSelectable = (ladderIdx !== -1 && isChallengeStageSelectable(ladderIdx)) || id === 'ryuji';
+                        var revealed = isTargetBoss || isStageSelectable || !!vsUnlocked[id];
+                        if (revealed) {
+                            p2Role.textContent = meta.role;
+                            p2Role.className = 'text-[9px] font-bold ' + meta.color;
+                            p2Name.textContent = meta.name;
+                            p2Desc.textContent = isTargetBoss ? ('🔥S' + (ladderIdx + 1) + '選択中') : (ladderIdx !== -1 ? ('S' + (ladderIdx + 1) + '挑戦可') : meta.desc);
+                            p2Card.className = isTargetBoss
+                                ? "p-1.5 rounded-lg border-2 border-red-500 bg-red-950/80 text-left transition-all shadow cursor-pointer"
+                                : "p-1.5 rounded-lg border-2 border-zinc-700 bg-zinc-900/80 text-left transition-all opacity-80 hover:opacity-100 cursor-pointer";
+                        } else {
+                            p2Role.textContent = '🔒 SECRET';
+                            p2Role.className = 'text-[9px] font-bold text-zinc-500';
+                            p2Name.textContent = '？？？';
+                            p2Desc.textContent = '次戦以降';
+                            p2Card.className = "p-1.5 rounded-lg border-2 border-zinc-800 bg-zinc-950/80 text-left transition-all opacity-40 cursor-not-allowed";
+                        }
                     }
                 } else {
-                    var isUnlocked = (side === 'p1') ? isCharUnlockedForCurrentMode(id, false) : (gameMode === 'challenge' ? true : !!vsUnlocked[id]);
-                    if (!isUnlocked) {
-                        if (rEl) { rEl.textContent = '🔒 ' + meta.role; rEl.className = 'text-[9px] font-bold ' + meta.color; }
-                        if (dEl) dEl.textContent = '激闘勝利で解放';
+                    // サバイバル・フリー対戦モード
+                    var p2Unlocked = isCharUnlockedForCurrentMode(id, false);
+                    if (p2Unlocked) {
+                        p2Role.textContent = meta.role;
+                        p2Role.className = 'text-[9px] font-bold ' + meta.color;
+                        p2Name.textContent = meta.name;
+                        p2Desc.textContent = meta.desc;
+                        p2Card.className = (id === selectedP2Id)
+                            ? "p-1.5 rounded-lg border-2 border-red-500 bg-red-950/80 text-left transition-all shadow cursor-pointer"
+                            : "p-1.5 rounded-lg border-2 border-zinc-700 bg-zinc-900/80 text-left transition-all opacity-80 hover:opacity-100 cursor-pointer";
+                    } else {
+                        p2Role.textContent = '🔒 SECRET';
+                        p2Role.className = 'text-[9px] font-bold text-zinc-500';
+                        p2Name.textContent = '？？？';
+                        p2Desc.textContent = id === 'maou' ? 'サバイバル20連勝' : (id === 'venus' ? 'サバイバル30戦目' : 'チャレンジで解放');
+                        p2Card.className = "p-1.5 rounded-lg border-2 border-zinc-800 bg-zinc-950/90 text-left transition-all opacity-50 cursor-not-allowed";
                     }
                 }
-            });
+            }
         });
+    };
+
+    var origSyncSelectPreviewFighters = syncSelectPreviewFighters;
+    syncSelectPreviewFighters = function() {
+        origSyncSelectPreviewFighters();
+        var statComp = document.getElementById('preview-stat-comparison');
+        if (statComp && gameMode === 'challenge') {
+            var p1Stats = computeFighterCombatStats(selectedP1Id, true);
+            var p2Stats = computeFighterCombatStats(selectedP2Id, false);
+            var unlockNote = (selectedP2Id === 'maou')
+                ? '※魔王ラセツはサバイバル20連勝で解放'
+                : (vsUnlocked[selectedP2Id] ? '🔓キャラ解放済' : '🔓勝利すればキャラ解放＆次ステージ開放！');
+            statComp.textContent = '💪 P1(HP:' + p1Stats.maxHp + '/攻撃' + Math.round(p1Stats.atkMult * 100) + '%) vs 敵S' + (challengeStageIndex + 1) + '(HP:' + p2Stats.maxHp + '/攻撃' + Math.round(p2Stats.atkMult * 100) + '%/推奨Lv.' + p2Stats.recLv + ') ｜ ' + unlockNote;
+        }
     };
 
     function initAll20CharsPatch() {
         injectCustomCharsDOM();
         loadGameProgress();
-        var base13Unlocked = ['ryuji', 'takeshi', 'sayuri', 'hanako', 'keita', 'ume', 'tyrant', 'gallo', 'incho', 'baby', 'dragon', 'bacteria', 'maou'].every(function(id) {
-            return !!vsUnlocked[id];
-        });
-        if (base13Unlocked) {
-            NEW_CHAR_LIST.forEach(function(id) {
-                challengeUnlocked[id] = true;
-                vsUnlocked[id] = true;
-            });
-        }
         updateTitleUnlockStatus();
         refreshCharacterCardsUI();
     }
