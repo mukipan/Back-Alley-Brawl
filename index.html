@@ -12993,7 +12993,7 @@ function initAll30CharsPatch() {
     window.addEventListener('DOMContentLoaded', initAll30CharsPatch);
 })();
 </script>
-<!-- ==================== 🌐 PeerJS オンライン通信対戦＆最終調整パッチ（V12：解放暗号ボタン1本化・ドラゴン飛行完全無敵・路地裏/BGM固定・ホスト強化設定） ==================== -->
+<!-- ==================== 🌐 PeerJS オンライン通信対戦＆暗号限定3大隠しキャラ（ムサシ・ヨハネ神父・看護師長）追加パッチ（V14完全版） ==================== -->
 <style>
 /* タイトル画面の「💰BP暗号」ボタンを非表示にし、「🔑解放暗号」の1つだけに統一 */
 #btn-bp-secret-title {
@@ -13003,8 +13003,8 @@ function initAll30CharsPatch() {
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (function() {
-    if (window.__ONLINE_VS_PATCH_V12_LOADED__) return;
-    window.__ONLINE_VS_PATCH_V12_LOADED__ = true;
+    if (window.__ONLINE_VS_PATCH_V14_LOADED__) return;
+    window.__ONLINE_VS_PATCH_V14_LOADED__ = true;
 
     if (typeof window.Peer === 'undefined') {
         var fallbackScript = document.createElement('script');
@@ -13012,6 +13012,974 @@ function initAll30CharsPatch() {
         document.head.appendChild(fallbackScript);
     }
 
+    // =========================================================================
+    // ★ 暗号限定3大隠しキャラクター（ムサシ・ヨハネ神父・看護師長）の登録・描画・技定義
+    // =========================================================================
+    var SECRET_ONLY_IDS = ['musashi', 'father', 'matron'];
+    var SECRET_STORAGE_KEY = 'rojiura_brawl_secret_pass_chars_v2';
+    var isSecretPassUnlocked = (
+        localStorage.getItem(SECRET_STORAGE_KEY) === '1' ||
+        localStorage.getItem('rojiura_brawl_secret_musashi_unlocked_v1') === '1'
+    );
+
+    function isPasscodeOnlyChar(id) {
+        return SECRET_ONLY_IDS.indexOf(id) !== -1;
+    }
+
+    SECRET_ONLY_IDS.forEach(function(id) {
+        if (!ALL_CHAR_IDS.includes(id)) {
+            ALL_CHAR_IDS.push(id);
+        }
+        if (!charUpgrades[id]) {
+            charUpgrades[id] = { atk: 1, hp: 1, mtr: 1 };
+        }
+        vsUnlocked[id] = isSecretPassUnlocked;
+        challengeUnlocked[id] = isSecretPassUnlocked;
+    });
+
+    CHAR_DISPLAY_NAMES.musashi = '零式・ムサシ';
+    CHAR_DISPLAY_NAMES.father  = 'ヨハネ神父';
+    CHAR_DISPLAY_NAMES.matron  = '看護師長';
+
+    CHAR_CARD_META.musashi = { role: '⚔️ 暗号剣豪',   name: '零式・ムサシ', desc: '暗号限定・二刀次元斬', color: 'text-cyan-300' };
+    CHAR_CARD_META.father  = { role: '✝️ 悪魔憑神父', name: 'ヨハネ神父',   desc: '背後悪魔＆神同時攻撃', color: 'text-purple-300' };
+    CHAR_CARD_META.matron  = { role: '👓 総看護師長', name: '看護師長',     desc: '全攻撃反射・時間自滅', color: 'text-pink-300' };
+
+    CHAR_MOVE_BUTTON_LABELS.musashi = { light: '疾風・二刀連斬',     heavy: '紅蓮・居合抜刀波',   special: '秘剣・空間次元斬' };
+    CHAR_MOVE_BUTTON_LABELS.father  = { light: '魔神の黒爪引き裂き', heavy: '魔王獄炎なぎ払い',   special: '神魔融合・天地双裁き' };
+    CHAR_MOVE_BUTTON_LABELS.matron  = { light: '赤ペン査定ビシッ',   heavy: '総回診カルテ強打',   special: '師長の絶対指導喝破' };
+
+    // 実績「全キャラ解放」は通常プレイの30キャラ解放で達成できるよう維持
+    if (typeof TROPHY_LIST !== 'undefined' && Array.isArray(TROPHY_LIST)) {
+        TROPHY_LIST.forEach(function(t) {
+            if (t.id === 'all_unlock') {
+                t.check = function() {
+                    return ALL_CHAR_IDS.filter(function(id) { return !isPasscodeOnlyChar(id); }).every(function(id) {
+                        return !!vsUnlocked[id];
+                    });
+                };
+            }
+        });
+    }
+
+    // 3体の専用サウンドエフェクト
+    SoundEngine.prototype.katanaSlashSound = function() {
+        this.init(); if (!this.seEnabled || !this.ctx) return;
+        var now = this.ctx.currentTime, self = this;
+        [1760, 2637, 880].forEach(function(freq, i) {
+            var osc = self.ctx.createOscillator(), g = self.ctx.createGain();
+            osc.type = i === 2 ? 'sawtooth' : 'triangle';
+            osc.frequency.setValueAtTime(freq, now + i * 0.025);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.28, now + i * 0.025 + 0.16);
+            g.gain.setValueAtTime(0.20, now + i * 0.025);
+            g.gain.exponentialRampToValueAtTime(0.005, now + i * 0.025 + 0.17);
+            osc.connect(g); g.connect(self.ctx.destination);
+            osc.start(now + i * 0.025); osc.stop(now + i * 0.025 + 0.18);
+        });
+        this.playNoise(0.18, 0.32, 2400);
+    };
+
+    SoundEngine.prototype.godDemonBellSound = function() {
+        this.init(); if (!this.seEnabled || !this.ctx) return;
+        var now = this.ctx.currentTime, self = this;
+        // 悪魔の重低音咆哮＋神の聖なる高音チャイムの同時共鳴
+        [73.4, 110, 1046.5, 1567.98].forEach(function(freq, i) {
+            var osc = self.ctx.createOscillator(), g = self.ctx.createGain();
+            osc.type = i < 2 ? 'sawtooth' : 'sine';
+            osc.frequency.setValueAtTime(freq, now);
+            osc.frequency.exponentialRampToValueAtTime(i < 2 ? freq * 0.55 : freq * 1.15, now + 0.42);
+            g.gain.setValueAtTime(0.18, now);
+            g.gain.exponentialRampToValueAtTime(0.005, now + 0.44);
+            osc.connect(g); g.connect(self.ctx.destination);
+            osc.start(now); osc.stop(now + 0.45);
+        });
+        this.playNoise(0.32, 0.35, 650);
+    };
+
+    SoundEngine.prototype.matronReflectSound = function() {
+        this.init(); if (!this.seEnabled || !this.ctx) return;
+        var now = this.ctx.currentTime, self = this;
+        [1318.5, 1975.5, 2637.0].forEach(function(freq, i) {
+            var osc = self.ctx.createOscillator(), g = self.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + i * 0.03);
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.4, now + i * 0.03 + 0.16);
+            g.gain.setValueAtTime(0.22, now + i * 0.03);
+            g.gain.exponentialRampToValueAtTime(0.005, now + i * 0.03 + 0.18);
+            osc.connect(g); g.connect(self.ctx.destination);
+            osc.start(now + i * 0.03); osc.stop(now + i * 0.03 + 0.19);
+        });
+    };
+
+    var prevPlayVoiceV14 = playCharSelectVoice;
+    playCharSelectVoice = function(charId) {
+        if (charId === 'musashi') { sfx.katanaSlashSound(); return; }
+        if (charId === 'father')  { sfx.godDemonBellSound(); return; }
+        if (charId === 'matron')  { sfx.matronReflectSound(); return; }
+        prevPlayVoiceV14(charId);
+    };
+
+    // -------------------------------------------------------------------------
+    // 1) ⚔️ 零式・ムサシ 描画関数
+    // -------------------------------------------------------------------------
+    window.drawMusashiHead = function(ctx, x, y, scale, isHit, isAttacking) {
+        scale = scale || 1;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        ctx.fillStyle = '#09090b';
+        ctx.fillRect(-10, -4, 20, 16);
+
+        var maskGrad = ctx.createLinearGradient(-18, -42, 18, 0);
+        maskGrad.addColorStop(0, '#334155');
+        maskGrad.addColorStop(0.5, '#0f172a');
+        maskGrad.addColorStop(1, '#09090b');
+        ctx.fillStyle = maskGrad;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.roundRect(-18, -42, 36, 42, 10); ctx.fill(); ctx.stroke();
+
+        ctx.strokeStyle = '#f43f5e';
+        ctx.lineWidth = 1.5;
+        [-14, -9, -4].forEach(function(my) {
+            ctx.beginPath(); ctx.moveTo(-11, my); ctx.lineTo(13, my); ctx.stroke();
+        });
+
+        ctx.save();
+        ctx.shadowColor = isAttacking ? '#f43f5e' : '#22d3ee';
+        ctx.shadowBlur = isAttacking ? 16 : 10;
+        ctx.fillStyle = isHit ? '#fde047' : '#22d3ee';
+        ctx.beginPath();
+        ctx.moveTo(-13, -25); ctx.lineTo(-2, -22); ctx.lineTo(-4, -19); ctx.lineTo(-14, -22);
+        ctx.closePath(); ctx.fill();
+
+        ctx.fillStyle = isHit ? '#fde047' : '#f43f5e';
+        ctx.beginPath();
+        ctx.moveTo(3, -22); ctx.lineTo(15, -25); ctx.lineTo(14, -21); ctx.lineTo(4, -19);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+
+        var hatGrad = ctx.createLinearGradient(-38, -58, 38, -30);
+        hatGrad.addColorStop(0, '#09090b');
+        hatGrad.addColorStop(0.5, '#1e293b');
+        hatGrad.addColorStop(1, '#09090b');
+        ctx.fillStyle = hatGrad;
+        ctx.strokeStyle = isAttacking ? '#f43f5e' : '#22d3ee';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(-38, -30);
+        ctx.quadraticCurveTo(0, -64, 38, -30);
+        ctx.quadraticCurveTo(0, -36, -38, -30);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath(); ctx.arc(0, -43, 4.5, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    };
+
+    Fighter.prototype.drawMusashi = function(ctx) {
+        var t = this.animTime;
+        var breath = Math.sin(t * 0.14) * 2;
+        ctx.save();
+        if (this.state === 'ko') { ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 95); }
+
+        var hipY = (this.state === 'crouch') ? -66 : -94 + breath * 0.5;
+        var walkSwing = (this.state === 'walk') ? Math.sin(t * 0.34) * 24 : 0;
+
+        var capeWave = Math.sin(t * 0.2) * 10;
+        ctx.fillStyle = '#09090b';
+        ctx.strokeStyle = '#be123c';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(-18, hipY - 58);
+        ctx.quadraticCurveTo(-42 + capeWave, hipY - 15, -36 + capeWave, -8);
+        ctx.lineTo(16, -12);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+
+        drawRoundedLimb(ctx, -10, hipY, -18 + walkSwing, -5, 16, 12, '#0f172a', '#38bdf8');
+        drawRoundedLimb(ctx, 10, hipY, 20 - walkSwing, -5, 16, 12, '#1e293b', '#f43f5e');
+
+        var lHandX = (this.state === 'attack') ? 64 : -22;
+        var lHandY = (this.state === 'attack') ? hipY - 52 : hipY - 30;
+        drawRoundedLimb(ctx, -14, hipY - 52, lHandX, lHandY, 11, 9, '#1e293b', '#22d3ee');
+
+        ctx.save();
+        ctx.translate(lHandX, lHandY);
+        ctx.rotate(this.state === 'attack' ? (0.35 + Math.sin(this.attackFrame * 0.7) * 0.8) : -0.65);
+        ctx.fillStyle = '#09090b'; ctx.fillRect(-14, -3, 14, 6);
+        ctx.fillStyle = '#facc15'; ctx.fillRect(-2, -8, 4, 16);
+        ctx.fillStyle = '#22d3ee'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(2, -3.5); ctx.lineTo(78, -1.5); ctx.lineTo(86, 1.5); ctx.lineTo(2, 3.5);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(0, hipY);
+        var haoriGrad = ctx.createLinearGradient(-24, -66, 24, 10);
+        haoriGrad.addColorStop(0, '#1e293b');
+        haoriGrad.addColorStop(0.5, '#0f172a');
+        haoriGrad.addColorStop(1, '#09090b');
+        ctx.fillStyle = haoriGrad;
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.roundRect(-23, -64, 46, 68, 8); ctx.fill(); ctx.stroke();
+
+        ctx.strokeStyle = '#f43f5e';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(-14, -56); ctx.lineTo(14, -18);
+        ctx.moveTo(14, -56);  ctx.lineTo(-14, -18);
+        ctx.stroke();
+
+        ctx.fillStyle = '#eab308';
+        ctx.strokeStyle = '#422006';
+        ctx.fillRect(-24, -14, 48, 9);
+        ctx.strokeRect(-24, -14, 48, 9);
+
+        drawMusashiHead(ctx, 2, -68, 1.02, this.state === 'hit', this.state === 'attack');
+        ctx.restore();
+
+        var rHandX = (this.state === 'attack') ? 82 : 30;
+        var rHandY = (this.state === 'attack') ? hipY - 40 : hipY - 34;
+        drawRoundedLimb(ctx, 14, hipY - 52, rHandX, rHandY, 12, 9, '#1e293b', '#f43f5e');
+
+        ctx.save();
+        ctx.translate(rHandX, rHandY);
+        ctx.rotate(this.state === 'attack' ? (-0.25 + Math.cos(this.attackFrame * 0.7) * 0.9) : -0.25);
+        ctx.fillStyle = '#09090b'; ctx.fillRect(-14, -3, 14, 6);
+        ctx.fillStyle = '#facc15'; ctx.fillRect(-2, -8, 4, 16);
+        ctx.fillStyle = '#f43f5e'; ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(2, -4); ctx.lineTo(86, -1.5); ctx.lineTo(95, 2); ctx.lineTo(2, 4);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.restore();
+
+        if (this.state === 'attack') {
+            var f = this.attackFrame;
+            var slashReach = 55 + Math.min(1, f / 12) * 185;
+            ctx.save();
+            ctx.translate(slashReach, hipY - 42);
+            ctx.strokeStyle = '#22d3ee';
+            ctx.lineWidth = 7;
+            ctx.beginPath(); ctx.arc(0, 0, 54, -Math.PI * 0.45, Math.PI * 0.45); ctx.stroke();
+            ctx.strokeStyle = '#f43f5e';
+            ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.arc(14, -6, 62, -Math.PI * 0.48, Math.PI * 0.48); ctx.stroke();
+
+            if (this.attackType === 'special' || this.attackType === 'super') {
+                ctx.strokeStyle = '#fde047';
+                ctx.lineWidth = 3.5;
+                ctx.beginPath();
+                ctx.moveTo(-45, -55); ctx.lineTo(45, 55);
+                ctx.moveTo(45, -55);  ctx.lineTo(-45, 55);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+        ctx.restore();
+    };
+
+    // -------------------------------------------------------------------------
+    // 2) ✝️ ヨハネ神父（背後に巨大な悪魔・必殺技で悪魔と神が同時攻撃）描画関数
+    // -------------------------------------------------------------------------
+    window.drawFatherHead = function(ctx, x, y, scale, isHit, isAttacking) {
+        scale = scale || 1;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        // 黒い神父襟と白いローマンカラー
+        ctx.fillStyle = '#09090b';
+        ctx.fillRect(-11, -5, 22, 16);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-6, -2, 12, 6);
+
+        // 彫りの深い厳格な神父の顔
+        var skinGrad = ctx.createRadialGradient(2, -22, 2, 0, -22, 24);
+        skinGrad.addColorStop(0, '#f1f5f9');
+        skinGrad.addColorStop(0.6, '#cbd5e1');
+        skinGrad.addColorStop(1, '#64748b');
+        ctx.fillStyle = skinGrad;
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(-17, -43, 34, 42, 10);
+        ctx.fill(); ctx.stroke();
+
+        // 銀髪オールバックと黒の司祭帽（ビレッタ）
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath(); ctx.roundRect(-18, -48, 36, 12, 4); ctx.fill();
+        ctx.fillStyle = '#09090b';
+        ctx.strokeStyle = '#a855f7';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.roundRect(-19, -56, 38, 12, 3); ctx.fill(); ctx.stroke();
+
+        // 普段は糸目（祈り）、攻撃時は黄金＆深紅に開眼
+        [-5, 9].forEach(function(ex, idx) {
+            if (isAttacking || isHit) {
+                ctx.fillStyle = idx === 0 ? '#fde047' : '#ef4444';
+                ctx.beginPath(); ctx.arc(ex, -23, 3.2, 0, Math.PI * 2); ctx.fill();
+            } else {
+                ctx.strokeStyle = '#09090b';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(ex - 4, -23); ctx.lineTo(ex + 4, -23); ctx.stroke();
+            }
+        });
+
+        ctx.restore();
+    };
+
+    Fighter.prototype.drawFather = function(ctx) {
+        var t = this.animTime;
+        var isAtk = (this.state === 'attack');
+        var f = this.attackFrame || 0;
+        var isDivineCombo = isAtk && (this.attackType === 'special' || this.attackType === 'super');
+
+        ctx.save();
+        if (this.state === 'ko') { ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 95); }
+
+        // =====================================================================
+        // 【A】背後にそびえ立つ「巨大で恐ろしい悪魔」の描画（攻撃時は前方に飛び出して魔爪＆獄炎で攻撃！）
+        // =====================================================================
+        var demonLungeX = isAtk ? (45 + Math.sin(Math.min(1, f / 12) * Math.PI) * 95) : (-32 + Math.sin(t * 0.08) * 6);
+        var demonFloatY = -148 + Math.cos(t * 0.1) * 7;
+
+        ctx.save();
+        ctx.translate(demonLungeX, demonFloatY);
+
+        // 悪魔の禍々しい暗黒オーラ
+        var dAura = ctx.createRadialGradient(0, 10, 10, 0, 10, 95);
+        dAura.addColorStop(0, 'rgba(220, 38, 38, 0.65)');
+        dAura.addColorStop(0.5, 'rgba(88, 28, 135, 0.45)');
+        dAura.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = dAura;
+        ctx.beginPath(); ctx.arc(0, 10, 95, 0, Math.PI * 2); ctx.fill();
+
+        // 巨大な悪魔の蝙蝠翼（左右）
+        var wingFlap = Math.sin(t * 0.18) * 14;
+        ctx.fillStyle = '#27091b';
+        ctx.strokeStyle = '#991b1b';
+        ctx.lineWidth = 2.2;
+        [-1, 1].forEach(function(dir) {
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(dir * 65, -58 + wingFlap, dir * 105, -22 + wingFlap);
+            ctx.lineTo(dir * 75, 18);
+            ctx.lineTo(dir * 45, 8);
+            ctx.lineTo(dir * 25, 32);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+        });
+
+        // 悪魔の筋肉質な巨体
+        var dBodyGrad = ctx.createLinearGradient(-42, -35, 42, 65);
+        dBodyGrad.addColorStop(0, '#450a0a');
+        dBodyGrad.addColorStop(0.5, '#18181b');
+        dBodyGrad.addColorStop(1, '#09090b');
+        ctx.fillStyle = dBodyGrad;
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(-38, -24); ctx.lineTo(38, -24);
+        ctx.lineTo(26, 58);   ctx.lineTo(-26, 58);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+
+        // 悪魔の頭部と巨大な2本の湾曲黒角
+        ctx.strokeStyle = '#f43f5e';
+        ctx.fillStyle = '#09090b';
+        ctx.lineWidth = 3;
+        // 左角・右角
+        [-1, 1].forEach(function(dir) {
+            ctx.beginPath();
+            ctx.moveTo(dir * 16, -42);
+            ctx.quadraticCurveTo(dir * 52, -68, dir * 38, -94);
+            ctx.quadraticCurveTo(dir * 24, -64, dir * 8, -46);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+        });
+
+        // 悪魔の恐ろしい顔と3つの紅い眼光・牙の裂け口
+        ctx.fillStyle = '#18181b';
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(4, -38, 24, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+        // 3つの紅く燃える眼
+        ctx.fillStyle = '#fef08a';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 14;
+        [[-4, -42], [14, -42], [5, -51]].forEach(function(ep) {
+            ctx.beginPath(); ctx.ellipse(ep[0], ep[1], 4.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.shadowBlur = 0;
+
+        // 牙が並ぶ裂けた口
+        ctx.fillStyle = '#7f1d1d';
+        ctx.beginPath(); ctx.roundRect(-8, -31, 26, isAtk ? 14 : 8, 3); ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        for (var fx = -6; fx <= 14; fx += 5) {
+            ctx.beginPath();
+            ctx.moveTo(fx, -31); ctx.lineTo(fx + 2.5, -25); ctx.lineTo(fx + 5, -31);
+            ctx.fill();
+        }
+
+        // 悪魔の巨大な魔爪アーム（攻撃時に前方へ豪快に伸びて引き裂く！）
+        var clawReachX = isAtk ? (85 + Math.sin(Math.min(1, f / 10) * Math.PI) * 95) : 42;
+        var clawReachY = isAtk ? (18 + Math.cos(f * 0.6) * 22) : 16;
+        drawRoundedLimb(ctx, 24, -12, clawReachX, clawReachY, 18, 15, '#450a0a', '#ef4444');
+
+        // 鋭い5本の紅い悪魔鉤爪と暗黒スラッシュ軌跡
+        ctx.save();
+        ctx.translate(clawReachX, clawReachY);
+        ctx.strokeStyle = '#f43f5e';
+        ctx.lineWidth = 4;
+        for (var c = -2; c <= 2; c++) {
+            ctx.beginPath();
+            ctx.moveTo(0, c * 4);
+            ctx.quadraticCurveTo(18, c * 6 - 6, 28, c * 8 + (isAtk ? 10 : 4));
+            ctx.stroke();
+        }
+        if (isAtk) {
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.88)';
+            ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.arc(10, 0, 48, -Math.PI * 0.45, Math.PI * 0.45); ctx.stroke();
+        }
+        ctx.restore();
+        ctx.restore(); // 悪魔終了
+
+        // =====================================================================
+        // 【B】必殺技（崩・超）発動時：天上から「神（黄金後光・天使翼・天罰聖光）」が降臨して悪魔と同時攻撃！
+        // =====================================================================
+        if (isDivineCombo) {
+            var targetBeamX = 175 + Math.sin(f * 0.4) * 25;
+            ctx.save();
+
+            // 天上から降り注ぐ神の黄金聖光レーザー柱
+            var beamGrad = ctx.createLinearGradient(targetBeamX - 55, -320, targetBeamX + 55, 0);
+            beamGrad.addColorStop(0, 'rgba(255, 255, 255, 0.98)');
+            beamGrad.addColorStop(0.4, 'rgba(253, 224, 71, 0.85)');
+            beamGrad.addColorStop(1, 'rgba(245, 158, 11, 0.25)');
+            ctx.fillStyle = beamGrad;
+            ctx.beginPath();
+            ctx.moveTo(targetBeamX - 48, -340);
+            ctx.lineTo(targetBeamX + 48, -340);
+            ctx.lineTo(targetBeamX + 75, 0);
+            ctx.lineTo(targetBeamX - 75, 0);
+            ctx.closePath();
+            ctx.fill();
+
+            // 上空に顕現する「神」の黄金後光（ヘイロー）と純白の熾天使6枚翼
+            ctx.translate(targetBeamX, -225);
+            ctx.strokeStyle = '#fef08a';
+            ctx.lineWidth = 5;
+            ctx.beginPath(); ctx.arc(0, 0, 42 + Math.sin(t * 0.5) * 5, 0, Math.PI * 2); ctx.stroke();
+
+            // 神の白い翼
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#fde047';
+            ctx.lineWidth = 2;
+            [-1, 1].forEach(function(dir) {
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(dir * 75, -45, dir * 115, -15);
+                ctx.quadraticCurveTo(dir * 65, 25, 0, 12);
+                ctx.closePath();
+                ctx.fill(); ctx.stroke();
+            });
+
+            // 神の巨大な黄金十字架と全知の瞳
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#fde047';
+            ctx.shadowBlur = 20;
+            ctx.fillRect(-8, -32, 16, 68);
+            ctx.fillRect(-26, -14, 52, 14);
+            ctx.shadowBlur = 0;
+
+            // 下方の悪魔から同時に噴き上がる暗黒獄炎とのクロス衝撃波
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(-55, 140); ctx.lineTo(55, 210);
+            ctx.moveTo(55, 140);  ctx.lineTo(-55, 210);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // =====================================================================
+        // 【C】手前に立つヨハネ神父本人（黒カソック＆黄金の十字架）
+        // =====================================================================
+        var hipY = (this.state === 'crouch') ? -68 : -94 + Math.sin(t * 0.12) * 2;
+        var walkSwing = (this.state === 'walk') ? Math.sin(t * 0.28) * 20 : 0;
+
+        drawRoundedLimb(ctx, -9, hipY, -16 + walkSwing, -5, 12, 9, '#09090b', '#334155');
+        drawRoundedLimb(ctx, 9, hipY, 18 - walkSwing, -5, 12, 9, '#09090b', '#334155');
+
+        // 黒いカソック（神父のロング法衣）と深紅・紫のストール（懸帯）
+        ctx.fillStyle = '#09090b';
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(-22, hipY - 62);
+        ctx.lineTo(22, hipY - 62);
+        ctx.lineTo(30, -8);
+        ctx.lineTo(-30, -8);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+
+        // 胸から垂れる黄金刺繍入り紫ストール
+        ctx.fillStyle = '#581c87';
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 1.4;
+        ctx.fillRect(-14, hipY - 58, 8, 72);
+        ctx.strokeRect(-14, hipY - 58, 8, 72);
+        ctx.fillRect(6, hipY - 58, 8, 72);
+        ctx.strokeRect(6, hipY - 58, 8, 72);
+
+        drawFatherHead(ctx, 2, hipY - 64, 1.0, this.state === 'hit', isAtk);
+
+        // 右手に掲げる「黄金の十字架（クルシフィクス）」
+        var rHandX = isAtk ? 46 : 32;
+        var rHandY = hipY - 46;
+        drawRoundedLimb(ctx, 14, hipY - 50, rHandX, rHandY, 10, 8, '#09090b', '#475569');
+
+        ctx.save();
+        ctx.translate(rHandX + 10, rHandY - 6);
+        if (isAtk) {
+            ctx.shadowColor = '#fde047';
+            ctx.shadowBlur = 18;
+        }
+        ctx.fillStyle = '#facc15';
+        ctx.strokeStyle = '#fef08a';
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(-4, -22, 8, 44);
+        ctx.strokeRect(-4, -22, 8, 44);
+        ctx.fillRect(-16, -10, 32, 8);
+        ctx.strokeRect(-16, -10, 32, 8);
+        ctx.restore();
+
+        ctx.restore();
+    };
+
+    // -------------------------------------------------------------------------
+    // 3) 👓 看護師長（眼鏡をかけたおばさん看護師長・全攻撃反射バリア・時間経過で自滅）描画関数
+    // -------------------------------------------------------------------------
+    window.drawMatronHead = function(ctx, x, y, scale, isHit, isAttacking) {
+        scale = scale || 1;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        ctx.fillStyle = '#f1c27d';
+        ctx.fillRect(-9, -4, 18, 15);
+
+        // おばさん看護師長のふくよかで威厳のある輪郭とまとめ髪（お団子ヘア）
+        ctx.fillStyle = '#334155';
+        ctx.beginPath(); ctx.arc(-18, -32, 12, 0, Math.PI * 2); ctx.fill();
+
+        var faceGrad = ctx.createRadialGradient(2, -22, 2, 0, -22, 24);
+        faceGrad.addColorStop(0, '#fde68a');
+        faceGrad.addColorStop(0.55, '#f5cfa0');
+        faceGrad.addColorStop(1, '#d4a373');
+        ctx.fillStyle = faceGrad;
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(-19, -43, 38, 43, 14);
+        ctx.fill(); ctx.stroke();
+
+        // 髪（前髪とサイドの白髪交じり黒髪）
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(-20, -47, 40, 13, 6);
+        ctx.fill();
+
+        // ほうれい線（ベテラン感）と厳しい口元
+        ctx.strokeStyle = '#9a3412';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(-8, -17); ctx.lineTo(-12, -9);
+        ctx.moveTo(12, -17); ctx.lineTo(16, -9);
+        ctx.stroke();
+        ctx.fillStyle = '#be123c';
+        ctx.beginPath(); ctx.roundRect(-5, -11, 14, isAttacking ? 6 : 3.5, 2); ctx.fill();
+
+        // 特徴的な「鋭く光る赤フレーム眼鏡（キラーン！）」
+        ctx.save();
+        ctx.fillStyle = 'rgba(224, 242, 254, 0.88)';
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 2.2;
+        // 左レンズ・右レンズ（スクエア眼鏡）
+        ctx.beginPath();
+        ctx.roundRect(-14, -29, 13, 9, 2);
+        ctx.roundRect(3, -29, 13, 9, 2);
+        ctx.fill(); ctx.stroke();
+        // 眼鏡のブリッジとつる
+        ctx.beginPath();
+        ctx.moveTo(-1, -25); ctx.lineTo(3, -25);
+        ctx.moveTo(-19, -25); ctx.lineTo(-14, -25);
+        ctx.stroke();
+        // レンズの白い反射ハイライト
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(-11, -28); ctx.lineTo(-6, -21);
+        ctx.moveTo(6, -28);   ctx.lineTo(11, -21);
+        ctx.stroke();
+        ctx.restore();
+
+        // 金色の2本線が入った「総看護師長ナースキャップ」
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(-20, -44);
+        ctx.lineTo(-24, -60);
+        ctx.lineTo(24, -60);
+        ctx.lineTo(20, -44);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+
+        // 師長の証であるゴールド2本線と赤十字
+        ctx.fillStyle = '#eab308';
+        ctx.fillRect(-21, -57, 42, 3);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(-2, -54, 4, 8);
+        ctx.fillRect(-4, -52, 8, 4);
+
+        ctx.restore();
+    };
+
+    Fighter.prototype.drawMatron = function(ctx) {
+        var t = this.animTime;
+        var breath = Math.sin(t * 0.16) * 2;
+        ctx.save();
+        if (this.state === 'ko') { ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 95); }
+
+        var hipY = (this.state === 'crouch') ? -66 : -92 + breath * 0.5;
+        var walkSwing = (this.state === 'walk') ? Math.sin(t * 0.3) * 20 : 0;
+
+        // 常時展開されている「絶対指導・全攻撃反射バリア（六角形ハニカムオーラ）」
+        ctx.save();
+        ctx.translate(0, hipY - 22);
+        var shieldPulse = Math.sin(t * 0.2) * 4;
+        var sGrad = ctx.createRadialGradient(0, 0, 25, 0, 0, 74 + shieldPulse);
+        sGrad.addColorStop(0, 'rgba(244, 114, 182, 0.05)');
+        sGrad.addColorStop(0.7, 'rgba(56, 189, 248, 0.25)');
+        sGrad.addColorStop(1, 'rgba(244, 63, 94, 0.55)');
+        ctx.fillStyle = sGrad;
+        ctx.strokeStyle = (t % 20 < 10) ? 'rgba(56, 189, 248, 0.85)' : 'rgba(244, 114, 182, 0.85)';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([8, 4]);
+        ctx.beginPath(); ctx.ellipse(0, 0, 56 + shieldPulse * 0.5, 76 + shieldPulse, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // 白いナースサンダルとストッキング脚
+        drawRoundedLimb(ctx, -10, hipY, -16 + walkSwing, -5, 13, 10, '#f5cfa0', '#78350f');
+        drawRoundedLimb(ctx, 10, hipY, 18 - walkSwing, -5, 13, 10, '#f5cfa0', '#78350f');
+
+        // 総看護師長の威厳ある白衣（ネイビーのパイピング襟付き）
+        ctx.save();
+        ctx.translate(0, hipY);
+        var coatGrad = ctx.createLinearGradient(-25, -64, 25, 20);
+        coatGrad.addColorStop(0, '#ffffff');
+        coatGrad.addColorStop(0.6, '#f8fafc');
+        coatGrad.addColorStop(1, '#cbd5e1');
+        ctx.fillStyle = coatGrad;
+        ctx.strokeStyle = '#1e3a8a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-24, -62, 48, 74, 8);
+        ctx.fill(); ctx.stroke();
+
+        // 胸元の「総看護師長」金バッジ
+        ctx.fillStyle = '#facc15';
+        ctx.strokeStyle = '#713f12';
+        ctx.lineWidth = 1.2;
+        ctx.fillRect(6, -48, 14, 8);
+        ctx.strokeRect(6, -48, 14, 8);
+
+        // 左手に抱えた分厚い「勤務表＆指導バインダー」
+        drawRoundedLimb(ctx, -16, -50, -28, -28, 11, 9, '#ffffff', '#64748b');
+        ctx.fillStyle = '#78350f';
+        ctx.strokeStyle = '#facc15';
+        ctx.beginPath(); ctx.roundRect(-40, -42, 20, 28, 3); ctx.fill(); ctx.stroke();
+
+        drawMatronHead(ctx, 2, -64, 1.0, this.state === 'hit', this.state === 'attack');
+        ctx.restore();
+
+        // 右手と「恐怖の赤ペン査定 / 指導メガホン」
+        var rHandX = (this.state === 'attack') ? 78 : 32;
+        var rHandY = hipY - 44;
+        drawRoundedLimb(ctx, 16, hipY - 50, rHandX, rHandY, 11, 9, '#ffffff', '#64748b');
+
+        ctx.save();
+        ctx.translate(rHandX, rHandY);
+        ctx.rotate(this.state === 'attack' ? 0.35 : -0.35);
+        ctx.fillStyle = '#ef4444';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.roundRect(0, -4, 34, 8, 3); ctx.fill(); ctx.stroke();
+        ctx.restore();
+
+        // 過労・激務の汗エフェクト
+        if (t % 16 < 8) {
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(-22, hipY - 92, 3.5, 0, Math.PI * 2);
+            ctx.arc(26, hipY - 88, 3.0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.restore();
+    };
+
+    // ヘッド描画フック（3体とも対応）
+    var prevDrawHeadV14 = drawRealisticHead;
+    drawRealisticHead = function(ctx, id, x, y, scale, isHit) {
+        scale = scale || 1;
+        if (id === 'musashi') { drawMusashiHead(ctx, x, y, scale, isHit, true); return; }
+        if (id === 'father')  { drawFatherHead(ctx, x, y, scale, isHit, true); return; }
+        if (id === 'matron')  { drawMatronHead(ctx, x, y, scale, isHit, true); return; }
+        prevDrawHeadV14(ctx, id, x, y, scale, isHit);
+    };
+
+    // 全身描画フック＋看護師長の「自滅カウントダウン表示」
+    var prevFighterDrawV14 = Fighter.prototype.draw;
+    Fighter.prototype.draw = function(ctx) {
+        if (this.id === 'musashi' || this.id === 'father' || this.id === 'matron') {
+            var savedId = this.id;
+            var origH = this.drawHanako;
+            this.id = 'hanako';
+            this.drawHanako = (savedId === 'musashi') ? this.drawMusashi : ((savedId === 'father') ? this.drawFather : this.drawMatron);
+            try {
+                prevFighterDrawV14.call(this, ctx);
+            } finally {
+                this.id = savedId;
+                this.drawHanako = origH;
+            }
+        } else {
+            prevFighterDrawV14.call(this, ctx);
+        }
+
+        // 👓 看護師長がバトル中の時、頭上に「絶対反射バリア稼働中＆過労自滅カウント」を表示
+        if (this.id === 'matron' && this.state !== 'ko' && gameState === 'playing') {
+            ctx.save();
+            ctx.translate(this.x, Math.min(GROUND_Y, this.y) - 196);
+            var drainPerFrame = this.maxHp / (26 * 60);
+            var remainSec = Math.max(0, Math.ceil(this.hp / Math.max(0.01, drainPerFrame * 60)));
+            ctx.fillStyle = 'rgba(9, 10, 15, 0.90)';
+            ctx.strokeStyle = '#f472b6';
+            ctx.lineWidth = 1.6;
+            ctx.beginPath(); ctx.roundRect(-78, -12, 156, 17, 6); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = remainSec <= 8 ? '#ef4444' : '#fbcfe8';
+            ctx.font = '900 9.5px "Noto Sans JP", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('👓全攻撃反射! (過労自滅まで残り' + remainSec + '秒)', 0, 0);
+            ctx.restore();
+        }
+    };
+
+    // 3体の技データ定義
+    var prevGetMoveDataV14 = Fighter.prototype.getMoveData;
+    Fighter.prototype.getMoveData = function(type) {
+        var customSecretMoves = {
+            musashi: {
+                light:   { name: '疾風・二刀連斬',       startup: 3, activeEnd: 10, totalFrames: 15, damage: 64,  range: 215, lungeSpeed: 8.5,  hitstun: 17, pushback: 10, meterGain: 14, isMusashiSlash: true },
+                heavy:   { name: '紅蓮・居合抜刀波',     startup: 6, activeEnd: 16, totalFrames: 23, damage: 138, range: 265, lungeSpeed: 10.5, hitstun: 23, pushback: 16, meterGain: 21, isMusashiSlash: true, isMusashiBleed: true },
+                special: { name: '秘剣・空間次元斬',     startup: 9, activeEnd: 21, totalFrames: 31, damage: 160, range: 295, lungeSpeed: 11.5, hitstun: 28, pushback: 14, meterGain: 26, isGuardBreak: true, isMusashiSlash: true, isDimensionCut: true },
+                super:   { name: '奥義・無明一閃千本桜', startup: 4, activeEnd: 30, totalFrames: 40, damage: 340, range: 320, lungeSpeed: 12.5, hitstun: 38, pushback: 24, meterGain: 0,  isSuper: true, isMusashiSlash: true, isDimensionCut: true }
+            },
+            father: {
+                light:   { name: '魔神の黒爪引き裂き',         startup: 4, activeEnd: 11, totalFrames: 16, damage: 62,  range: 235, lungeSpeed: 5.5, hitstun: 17, pushback: 12, meterGain: 13 },
+                heavy:   { name: '魔王獄炎なぎ払い',           startup: 7, activeEnd: 17, totalFrames: 25, damage: 136, range: 275, lungeSpeed: 6.5, hitstun: 23, pushback: 18, meterGain: 20, isDemonHellfire: true },
+                special: { name: '神魔融合・天地双裁き',       startup: 10, activeEnd: 23, totalFrames: 34, damage: 162, range: 310, lungeSpeed: 6.0, hitstun: 28, pushback: 20, meterGain: 26, isGuardBreak: true, isGodAndDemon: true },
+                super:   { name: '創世と終焉・神魔ラグナロク', startup: 5, activeEnd: 30, totalFrames: 42, damage: 345, range: 335, lungeSpeed: 8.0, hitstun: 40, pushback: 26, meterGain: 0,  isSuper: true, isGodAndDemon: true }
+            },
+            matron: {
+                light:   { name: '赤ペン査定ビシッ',         startup: 4, activeEnd: 10, totalFrames: 16, damage: 52,  range: 185, lungeSpeed: 5.0, hitstun: 16, pushback: 10, meterGain: 12 },
+                heavy:   { name: '総回診カルテ強打',         startup: 7, activeEnd: 16, totalFrames: 24, damage: 115, range: 215, lungeSpeed: 6.2, hitstun: 22, pushback: 16, meterGain: 19 },
+                special: { name: '師長の絶対指導喝破',       startup: 11, activeEnd: 22, totalFrames: 33, damage: 135, range: 240, lungeSpeed: 6.5, hitstun: 26, pushback: 18, meterGain: 25, isGuardBreak: true },
+                super:   { name: '臨時総回診・インシデント嵐', startup: 5, activeEnd: 30, totalFrames: 42, damage: 295, range: 270, lungeSpeed: 8.5, hitstun: 36, pushback: 24, meterGain: 0,  isSuper: true }
+            }
+        };
+        if (customSecretMoves[this.id] && customSecretMoves[this.id][type]) {
+            var m = Object.assign({}, customSecretMoves[this.id][type]);
+            if ((this.inkBlindTimer || 0) > 0) m.range = Math.round(m.range * 0.80);
+            return m;
+        }
+        return prevGetMoveDataV14.call(this, type);
+    };
+
+    // 3体のステータス計算
+    var prevComputeStatsV14 = computeFighterCombatStats;
+    computeFighterCombatStats = function(id, isP1) {
+        if (isPasscodeOnlyChar(id)) {
+            var upg = charUpgrades[id] || { atk: 1, hp: 1, mtr: 1 };
+            var baseVsMap = {
+                musashi: { maxHp: 1550, atkMult: 1.32, mtrMult: 1.15, recLv: 10 },
+                father:  { maxHp: 1600, atkMult: 1.35, mtrMult: 1.15, recLv: 10 },
+                matron:  { maxHp: 1500, atkMult: 1.20, mtrMult: 1.15, recLv: 10 }
+            };
+            if (gameMode === 'vs' && !(isOnlineMode && onlineConnected && onlineUseUpgrades)) {
+                return baseVsMap[id];
+            }
+            var baseUpgHp  = id === 'father' ? 2300 : (id === 'musashi' ? 2200 : 2000);
+            var baseUpgAtk = id === 'father' ? 1.68 : (id === 'musashi' ? 1.65 : 1.45);
+            return {
+                maxHp: baseUpgHp + (upg.hp - 1) * 110,
+                atkMult: Number((baseUpgAtk + (upg.atk - 1) * 0.09).toFixed(2)),
+                mtrMult: Number((1.25 + (upg.mtr - 1) * 0.09).toFixed(2)),
+                recLv: Math.round((upg.atk + upg.hp + upg.mtr) / 3)
+            };
+        }
+        return prevComputeStatsV14(id, isP1);
+    };
+
+    // 3体のカードDOMと技表エントリーを追加
+    function ensureSecretPassCharsDOM() {
+        ['p1', 'p2'].forEach(function(side) {
+            var ryujiCard = document.getElementById(side + '-card-ryuji');
+            if (!ryujiCard || !ryujiCard.parentNode) return;
+            var parentGrid = ryujiCard.parentNode;
+            SECRET_ONLY_IDS.forEach(function(id) {
+                var card = document.getElementById(side + '-card-' + id);
+                if (!card) {
+                    card = document.createElement('button');
+                    card.type = 'button';
+                    card.id = side + '-card-' + id;
+                    card.setAttribute('onclick', (side === 'p1' ? 'selectP1' : 'selectP2') + "('" + id + "')");
+                    card.className = "p-1.5 rounded-lg border-2 border-zinc-700 bg-zinc-900/80 text-left transition-all opacity-80 hover:opacity-100 cursor-pointer";
+                    card.innerHTML =
+                        '<div id="' + side + '-role-' + id + '" class="text-[9px] font-bold text-zinc-500">🔑 SECRET</div>' +
+                        '<div id="' + side + '-name-' + id + '" class="text-[10px] font-black text-white leading-tight truncate">？？？</div>' +
+                        '<div id="' + side + '-desc-' + id + '" class="text-[8px] text-zinc-400 leading-tight mt-0.5 truncate">🔑解放暗号で出現</div>';
+                    parentGrid.appendChild(card);
+                }
+            });
+        });
+
+        var movesModalList = document.querySelector('#moves-modal .space-y-3');
+        if (movesModalList && !document.getElementById('moves-entry-matron')) {
+            var secretEntries = [
+                {
+                    id: 'matron',
+                    cls: 'bg-pink-950/90 border-pink-300/90',
+                    html: '<strong class="text-pink-300">👓 看護師長（🔑解放暗号専用シークレット／プレイヤー専用・CPU敵出現なし／相手のあらゆる攻撃を0ダメージで無効化してそのまま相手へ跳ね返す『絶対指導反射』を持つが、激務により体力が自動的に徐々に減っていき約26秒で自滅する！）：</strong>赤ペン査定ビシッ(弱) / 総回診カルテ強打(強) / 師長の絶対指導喝破(崩) / 臨時総回診・インシデント嵐(超)'
+                },
+                {
+                    id: 'father',
+                    cls: 'bg-purple-950/90 border-purple-300/90',
+                    html: '<strong class="text-purple-300">✝️ ヨハネ神父（🔑解放暗号専用シークレット／プレイヤー専用・CPU敵出現なし／通常攻撃は背後に憑いた巨大な悪魔が魔爪と獄炎で攻撃し、必殺技では天上の『神』と背後の『悪魔』が一緒に攻撃してくる！）：</strong>魔神の黒爪引き裂き(弱) / 魔王獄炎なぎ払い(強) / 神魔融合・天地双裁き(崩：神＆悪魔同時攻撃) / 創世と終焉・神魔ラグナロク(超：神＆悪魔同時攻撃)'
+                },
+                {
+                    id: 'musashi',
+                    cls: 'bg-cyan-950/90 border-cyan-300/90',
+                    html: '<strong class="text-cyan-300">⚔️ 零式・ムサシ（🔑解放暗号専用シークレット／プレイヤー専用・CPU敵出現なし／ガード削り75%軽減の『心眼』と時空を断つ二刀次元斬を操る暗号剣豪！）：</strong>疾風・二刀連斬(弱) / 紅蓮・居合抜刀波(強) / 秘剣・空間次元斬(崩：次元停止) / 奥義・無明一閃千本桜(超)'
+                }
+            ];
+            secretEntries.forEach(function(item) {
+                var ex = document.getElementById('moves-entry-' + item.id);
+                if (ex) ex.remove();
+                var div = document.createElement('div');
+                div.id = 'moves-entry-' + item.id;
+                div.className = 'p-3 rounded-xl border ' + item.cls;
+                div.innerHTML = item.html;
+                movesModalList.insertBefore(div, movesModalList.children[1]);
+            });
+        }
+    }
+
+    // ★解放暗号（キャラ全解放）を実行した時だけ3体の隠しキャラが解放されるフック
+    var prevUnlockAllBySecretV14 = unlockAllCharactersBySecret;
+    unlockAllCharactersBySecret = function() {
+        isSecretPassUnlocked = true;
+        try {
+            localStorage.setItem(SECRET_STORAGE_KEY, '1');
+            localStorage.setItem('rojiura_brawl_secret_musashi_unlocked_v1', '1');
+        } catch (e) {}
+        prevUnlockAllBySecretV14();
+        SECRET_ONLY_IDS.forEach(function(id) {
+            vsUnlocked[id] = true;
+            challengeUnlocked[id] = true;
+        });
+        saveGameProgress();
+        updateTitleUnlockStatus();
+        refreshCharacterCardsUI();
+    };
+
+    var prevLoadProgressV14 = loadGameProgress;
+    loadGameProgress = function() {
+        prevLoadProgressV14();
+        isSecretPassUnlocked = (
+            localStorage.getItem(SECRET_STORAGE_KEY) === '1' ||
+            localStorage.getItem('rojiura_brawl_secret_musashi_unlocked_v1') === '1'
+        );
+        SECRET_ONLY_IDS.forEach(function(id) {
+            vsUnlocked[id] = isSecretPassUnlocked;
+            challengeUnlocked[id] = isSecretPassUnlocked;
+            if (!charUpgrades[id]) {
+                charUpgrades[id] = { atk: 1, hp: 1, mtr: 1 };
+            }
+        });
+    };
+
+    var prevExecuteResetV14 = window.executeDataReset;
+    window.executeDataReset = function() {
+        isSecretPassUnlocked = false;
+        try {
+            localStorage.removeItem(SECRET_STORAGE_KEY);
+            localStorage.removeItem('rojiura_brawl_secret_musashi_unlocked_v1');
+        } catch (e) {}
+        SECRET_ONLY_IDS.forEach(function(id) {
+            vsUnlocked[id] = false;
+            challengeUnlocked[id] = false;
+            charUpgrades[id] = { atk: 1, hp: 1, mtr: 1 };
+        });
+        prevExecuteResetV14();
+    };
+
+    var prevIsCharUnlockedV14 = isCharUnlockedForCurrentMode;
+    isCharUnlockedForCurrentMode = function(charId, forCpuSide) {
+        if (isPasscodeOnlyChar(charId)) {
+            if (forCpuSide && (gameMode === 'challenge' || gameMode === 'survival')) {
+                return false;
+            }
+            return !!isSecretPassUnlocked;
+        }
+        return prevIsCharUnlockedV14(charId, forCpuSide);
+    };
+
+    var prevGetUnlockReqTextV14 = getCharUnlockRequirementText;
+    getCharUnlockRequirementText = function(charId) {
+        if (isPasscodeOnlyChar(charId)) return '🔑解放暗号（全キャラ解放）で出現';
+        return prevGetUnlockReqTextV14(charId);
+    };
+
+    var prevShowSecretToastV14 = showSecretToast;
+    showSecretToast = function(charId) {
+        if (isPasscodeOnlyChar(charId)) {
+            var toast = document.getElementById('secret-notice-toast');
+            if (!toast) return;
+            var cName = CHAR_DISPLAY_NAMES[charId] || 'このキャラ';
+            toast.textContent = '🔒『' + cName + '』はタイトル画面の「🔑解放暗号」でキャラ全解放を入力した時のみ出現する隠しキャラクターです！（※CPU敵としては出現しません）';
+            toast.classList.remove('hidden');
+            if (secretToastTimer) clearTimeout(secretToastTimer);
+            secretToastTimer = setTimeout(function() { toast.classList.add('hidden'); }, 3200);
+            return;
+        }
+        prevShowSecretToastV14(charId);
+    };
+
+    // =========================================================================
+    // オンライン対戦＆システム共通設定
+    // =========================================================================
     var ROOM_PREFIX = 'rojiura-brawl-v30-room-';
     var ALLOWED_PACKET_TYPES = [
         'hello', 'rule_sync', 'char_select', 'ready_sync', 'launch_match',
@@ -13048,9 +14016,6 @@ function initAll30CharsPatch() {
     var isReroutingGuestAttack = false;
     var isApplyingRemoteRoundEnd = false;
 
-    // =========================================================================
-    // 0. ステージ選択・BGM選択UIを完全に消去し「路地裏＆BGM1ロック」に固定する機構
-    // =========================================================================
     function hideElementCompletely(el) {
         if (!el || !el.style) return;
         el.classList.add('hidden');
@@ -13065,7 +14030,6 @@ function initAll30CharsPatch() {
         try { if (typeof currentBgmMode !== 'undefined')   currentBgmMode   = 1; } catch (e) {}
         try { if (typeof bgmTrack !== 'undefined')         bgmTrack         = 1; } catch (e) {}
 
-        // タイトル画面の「💰BP暗号」ボタンも確実に隠す
         var bpBtn = document.getElementById('btn-bp-secret-title');
         if (bpBtn) hideElementCompletely(bpBtn);
 
@@ -13325,6 +14289,7 @@ function initAll30CharsPatch() {
     }
 
     function isCharUnlockedOnMyDevice(charId) {
+        if (isPasscodeOnlyChar(charId)) return !!isSecretPassUnlocked;
         return !!(vsUnlocked[charId] || challengeUnlocked[charId]);
     }
 
@@ -13477,8 +14442,8 @@ function initAll30CharsPatch() {
         ];
         btnMap.forEach(function(item) {
             var el = document.getElementById(item.id);
-            if (!el || el.dataset.onlineBoundV12) return;
-            el.dataset.onlineBoundV12 = '1';
+            if (!el || el.dataset.onlineBoundV14) return;
+            el.dataset.onlineBoundV14 = '1';
 
             var setPress = function(val) {
                 myLocalPad[item.key] = val;
@@ -13494,8 +14459,8 @@ function initAll30CharsPatch() {
             el.addEventListener('mouseup', function() { setPress(false); });
         });
 
-        if (!window.__ONLINE_GLOBAL_ATK_CAPTURE_V12__) {
-            window.__ONLINE_GLOBAL_ATK_CAPTURE_V12__ = true;
+        if (!window.__ONLINE_GLOBAL_ATK_CAPTURE_V14__) {
+            window.__ONLINE_GLOBAL_ATK_CAPTURE_V14__ = true;
             var lastAtkInputTime = 0;
 
             var globalAttackInterceptor = function(e) {
@@ -13519,8 +14484,8 @@ function initAll30CharsPatch() {
             window.addEventListener('click',       globalAttackInterceptor, { capture: true, passive: false });
         }
 
-        if (!window.__ONLINE_KEY_V12_BOUND__) {
-            window.__ONLINE_KEY_V12_BOUND__ = true;
+        if (!window.__ONLINE_KEY_V14_BOUND__) {
+            window.__ONLINE_KEY_V14_BOUND__ = true;
             window.addEventListener('keydown', function(e) {
                 if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') myLocalPad.left  = true;
                 if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') myLocalPad.right = true;
@@ -13625,6 +14590,9 @@ function initAll30CharsPatch() {
         }
 
         if (started) {
+            if (myFighter.id === 'musashi') sfx.katanaSlashSound();
+            if (myFighter.id === 'father')  sfx.godDemonBellSound();
+            if (myFighter.id === 'matron')  sfx.matronReflectSound();
             sendOnlinePacket({ type: 'attack', moveType: moveType });
             enforceMyControlPanelDOM();
         }
@@ -13647,6 +14615,7 @@ function initAll30CharsPatch() {
 
     function injectOnlineUI() {
         bindOnlinePadEvents();
+        ensureSecretPassCharsDOM();
         enforceAlleyStageAndRockBgm(false);
 
         var vsBtn = document.querySelector('button[onclick="openMode(\'vs\')"]');
@@ -14130,8 +15099,7 @@ function initAll30CharsPatch() {
                     if (gameState === 'playing' && player1 && player2) {
                         var defF = pkt.targetIsP1 ? player1 : player2;
                         var atkF = pkt.targetIsP1 ? player2 : player1;
-                        // ドラゴンが飛行中（!isGrounded）の場合は通信経由のダメージも0に無効化
-                        if (defF.id === 'dragon' && !defF.isGrounded) {
+                        if ((defF.id === 'dragon' && !defF.isGrounded) || defF.id === 'matron') {
                             return;
                         }
                         if (pkt.hp < defF.hp) {
@@ -14205,7 +15173,7 @@ function initAll30CharsPatch() {
     }
 
     // =========================================================================
-    // 6. キャラ選択＆両者READYボタンシステム
+    // 6. キャラ選択＆両者READYボタン＆暗号限定3キャラ（ムサシ・神父・看護師長）カード表示
     // =========================================================================
     var origOpenModeForOnline = window.openMode;
     window.openMode = function(mode) {
@@ -14219,6 +15187,10 @@ function initAll30CharsPatch() {
 
     var origSelectP1ForOnline = window.selectP1;
     window.selectP1 = function(charId) {
+        if (isPasscodeOnlyChar(charId) && !isSecretPassUnlocked) {
+            sfx.init(); sfx.block(); showSecretToast(charId);
+            return;
+        }
         if (isOnlineMode && onlineConnected) {
             if (!isCharUnlockedOnMyDevice(charId)) {
                 sfx.init(); sfx.block(); showSecretToast(charId);
@@ -14252,6 +15224,11 @@ function initAll30CharsPatch() {
             window.selectP1(charId);
             return;
         }
+        // 暗号限定3キャラはチャレンジ・サバイバルの敵（CPU側）としては選択不可
+        if (isPasscodeOnlyChar(charId) && (gameMode === 'challenge' || gameMode === 'survival' || !isSecretPassUnlocked)) {
+            sfx.init(); sfx.block(); showSecretToast(charId);
+            return;
+        }
         origSelectP2ForOnline(charId);
     };
 
@@ -14280,8 +15257,57 @@ function initAll30CharsPatch() {
 
     var prevRefreshCardsOnline = refreshCharacterCardsUI;
     refreshCharacterCardsUI = function() {
+        ensureSecretPassCharsDOM();
+        SECRET_ONLY_IDS.forEach(function(id) {
+            vsUnlocked[id] = isSecretPassUnlocked;
+            challengeUnlocked[id] = isSecretPassUnlocked;
+        });
+
         prevRefreshCardsOnline();
         enforceAlleyStageAndRockBgm(false);
+
+        if (!isOnlineMode) {
+            SECRET_ONLY_IDS.forEach(function(id) {
+                var meta = CHAR_CARD_META[id];
+                var p1CardM = document.getElementById('p1-card-' + id);
+                var p1RoleM = document.getElementById('p1-role-' + id);
+                var p1NameM = document.getElementById('p1-name-' + id);
+                var p1DescM = document.getElementById('p1-desc-' + id);
+                if (p1CardM && p1RoleM && p1NameM && p1DescM && meta) {
+                    if (isSecretPassUnlocked) {
+                        var upM = charUpgrades[id] || { atk: 1, hp: 1, mtr: 1 };
+                        var totalLvM = upM.atk + upM.hp + upM.mtr - 2;
+                        p1RoleM.textContent = meta.role + (gameMode !== 'vs' && totalLvM > 1 ? ' ★Lv.' + totalLvM : '');
+                        p1RoleM.className = 'text-[9px] font-bold ' + meta.color;
+                        p1NameM.textContent = meta.name;
+                        p1DescM.textContent = meta.desc;
+                    } else {
+                        p1RoleM.textContent = '🔑 SECRET';
+                        p1RoleM.className = 'text-[9px] font-bold text-zinc-500';
+                        p1NameM.textContent = '？？？';
+                        p1DescM.textContent = '🔑解放暗号で出現';
+                    }
+                }
+                var p2CardM = document.getElementById('p2-card-' + id);
+                var p2RoleM = document.getElementById('p2-role-' + id);
+                var p2NameM = document.getElementById('p2-name-' + id);
+                var p2DescM = document.getElementById('p2-desc-' + id);
+                if (p2CardM && p2RoleM && p2NameM && p2DescM && meta) {
+                    if (gameMode === 'challenge' || gameMode === 'survival') {
+                        p2RoleM.textContent = isSecretPassUnlocked ? '⚔️ 自機専用' : '🔑 SECRET';
+                        p2RoleM.className = 'text-[9px] font-bold text-zinc-500';
+                        p2NameM.textContent = isSecretPassUnlocked ? meta.name : '？？？';
+                        p2DescM.textContent = '敵出現なし(自機専用)';
+                        p2CardM.className = "p-1.5 rounded-lg border-2 border-zinc-800 bg-zinc-950/80 text-left transition-all opacity-40 cursor-not-allowed";
+                    } else if (!isSecretPassUnlocked) {
+                        p2RoleM.textContent = '🔑 SECRET';
+                        p2RoleM.className = 'text-[9px] font-bold text-zinc-500';
+                        p2NameM.textContent = '？？？';
+                        p2DescM.textContent = '🔑解放暗号で出現';
+                    }
+                }
+            });
+        }
 
         var onBar = document.getElementById('online-select-bar');
         var fightBtn = document.querySelector('button[onclick="startGame()"]');
@@ -14339,10 +15365,10 @@ function initAll30CharsPatch() {
                             ? "p-1.5 rounded-lg border-2 border-emerald-400 bg-emerald-950/85 text-left transition-all shadow cursor-pointer"
                             : "p-1.5 rounded-lg border-2 border-zinc-700 bg-zinc-900/80 text-left transition-all opacity-80 hover:opacity-100 cursor-pointer";
                     } else {
-                        p1Role.textContent = '🔒 SECRET';
+                        p1Role.textContent = isPasscodeOnlyChar(id) ? '🔑 SECRET' : '🔒 SECRET';
                         p1Role.className = 'text-[9px] font-bold text-zinc-500';
                         p1Name.textContent = '？？？';
-                        p1Desc.textContent = id === 'maou' ? 'サバイバル20連勝' : (id === 'venus' ? 'サバイバル30戦目' : (id === 'abyss' ? 'サバイバル40戦目' : (id === 'helios' ? 'サバイバル50戦目' : 'チャレンジで解放')));
+                        p1Desc.textContent = isPasscodeOnlyChar(id) ? '🔑解放暗号で出現' : (id === 'maou' ? 'サバイバル20連勝' : (id === 'venus' ? 'サバイバル30戦目' : (id === 'abyss' ? 'サバイバル40戦目' : (id === 'helios' ? 'サバイバル50戦目' : 'チャレンジで解放'))));
                         p1Card.className = "p-1.5 rounded-lg border-2 border-zinc-800 bg-zinc-950/90 text-left transition-all opacity-50 cursor-not-allowed";
                     }
                 }
@@ -14488,7 +15514,7 @@ function initAll30CharsPatch() {
     };
 
     // =========================================================================
-    // 7. バトル中の1P/2P完全分離操作 ＆ ドラゴン飛行中「完全無敵（0ダメージ）」保護
+    // 7. バトル中の1P/2P分離操作 ＆ 3大隠しキャラ固有ギミック（反射・自滅・神魔同時攻撃・二刀次元斬）
     // =========================================================================
     var prevUpdateCPUOnline = updateCPU;
     updateCPU = function() {
@@ -14500,7 +15526,13 @@ function initAll30CharsPatch() {
     Fighter.prototype.startAttack = function(type) {
         if (isOnlineMode && onlineConnected && gameState === 'playing') {
             if (isExecutingRemoteAttack) {
-                return prevStartAttackOnline.call(this, type);
+                var okRemote = prevStartAttackOnline.call(this, type);
+                if (okRemote) {
+                    if (this.id === 'musashi') sfx.katanaSlashSound();
+                    if (this.id === 'father')  sfx.godDemonBellSound();
+                    if (this.id === 'matron')  sfx.matronReflectSound();
+                }
+                return okRemote;
             }
 
             if (onlineRole === 'guest' && this.isP1) {
@@ -14525,6 +15557,9 @@ function initAll30CharsPatch() {
                     isExecutingRemoteAttack = false;
                 }
                 if (ok) {
+                    if (this.id === 'musashi') sfx.katanaSlashSound();
+                    if (this.id === 'father')  sfx.godDemonBellSound();
+                    if (this.id === 'matron')  sfx.matronReflectSound();
                     sendOnlinePacket({ type: 'attack', moveType: type });
                 }
                 return ok;
@@ -14532,7 +15567,13 @@ function initAll30CharsPatch() {
 
             return false;
         }
-        return prevStartAttackOnline.call(this, type);
+        var started = prevStartAttackOnline.call(this, type);
+        if (started) {
+            if (this.id === 'musashi') sfx.katanaSlashSound();
+            if (this.id === 'father')  sfx.godDemonBellSound();
+            if (this.id === 'matron')  sfx.matronReflectSound();
+        }
+        return started;
     };
 
     var origTriggerAttackOnline = window.triggerAttack;
@@ -14544,19 +15585,55 @@ function initAll30CharsPatch() {
         origTriggerAttackOnline(type);
     };
 
-    // ★ドラゴン飛行中に攻撃を受けた際、内部のKO判定（checkKO）が誤発火しないようブロック
     var prevCheckKODragonGuard = checkKO;
     var isDragonAirInvincibleActive = false;
     checkKO = function(attacker, defender, move) {
-        if (isDragonAirInvincibleActive || (defender && defender.id === 'dragon' && !defender.isGrounded)) {
+        if (isDragonAirInvincibleActive || (defender && defender.id === 'dragon' && !defender.isGrounded) || (defender && defender.id === 'matron')) {
             return;
         }
         prevCheckKODragonGuard(attacker, defender, move);
     };
 
-    // ★ドラゴンの飛行中（!defender.isGrounded）は「今の文字」をそのまま表示させつつ、受けるダメージを完全に0（ノーダメージ＆状態異常無効）にする！
     var prevResolveHitOnline = resolveHit;
     resolveHit = function(attacker, defender, move) {
+        // ★ 1) 👓 看護師長の特殊スキル『どんな攻撃も跳ね返す絶対指導反射』！
+        // 看護師長自身はダメージ0＆のけぞり無効で、攻撃してきた相手にそのままダメージを100%跳ね返す！
+        if (defender && defender.id === 'matron' && attacker && attacker !== defender) {
+            sfx.matronReflectSound();
+            sfx.hitHeavy();
+            var reflectDmg = Math.max(28, Math.round((move.damage || 65) * (attacker.atkMult || 1)));
+            attacker.hp = Math.max(0, attacker.hp - reflectDmg);
+            attacker.state = (attacker.hp <= 0) ? 'ko' : 'hit';
+            attacker.stateTimer = 20;
+            attacker.vx = -attacker.facing * 12;
+            attacker.vy = -5;
+            defender.meter = Math.min(100, (defender.meter || 0) + 14);
+            shakeTime = 12; shakeMag = 10;
+
+            spawnHitSparks(defender.x, defender.y - 95, '#38bdf8', 18);
+            spawnHitSparks(attacker.x, attacker.y - 95, '#f43f5e', 24);
+            spawnCallout('👓 師長の絶対指導反射!! (-' + reflectDmg + ' HP跳ね返し!)', attacker.x, attacker.y - 185, '#f472b6');
+
+            if (isOnlineMode && onlineConnected) {
+                sendOnlinePacket({
+                    type: 'hit_sync',
+                    targetIsP1: !!attacker.isP1,
+                    hp: Math.round(attacker.hp),
+                    attackerMeter: Math.round(defender.meter * 10) / 10,
+                    defenderMeter: Math.round(attacker.meter * 10) / 10,
+                    vx: Math.round(attacker.vx * 10) / 10,
+                    vy: Math.round(attacker.vy * 10) / 10,
+                    stateTimer: 20
+                });
+            }
+
+            if (attacker.hp <= 0 && gameState === 'playing') {
+                handleRoundEnd(defender);
+            }
+            return;
+        }
+
+        // ★ 2) 🐉 ドラゴンの飛行中は「今の文字」をそのまま出しつつダメージ0（完全無敵）にする
         if (defender && defender.id === 'dragon' && !defender.isGrounded) {
             var savedHp      = defender.hp;
             var savedDispHp  = defender.displayHp;
@@ -14577,13 +15654,11 @@ function initAll30CharsPatch() {
 
             isDragonAirInvincibleActive = true;
             try {
-                // 既存のresolveHitを実行して「今の文字（飛行無敵テキスト）」をそのまま出させる
                 prevResolveHitOnline(attacker, defender, move);
             } finally {
                 isDragonAirInvincibleActive = false;
             }
 
-            // ダメージ・のけぞり・デバフをすべて攻撃前の状態へ完全復元（0ダメージ化）
             defender.maxHp            = savedMaxHp;
             defender.hp               = savedHp;
             defender.displayHp        = savedDispHp;
@@ -14605,6 +15680,45 @@ function initAll30CharsPatch() {
 
         var prevHp = defender ? defender.hp : 0;
         prevResolveHitOnline(attacker, defender, move);
+
+        // ⚔️ 零式・ムサシの固有パッシブ『心眼・見切り』（ガード時の削りダメージを75%軽減）
+        if (defender && defender.id === 'musashi' && defender.isBlocking && !move.isGuardBreak && !move.isSuper && defender.hp < prevHp) {
+            var lostChip = prevHp - defender.hp;
+            defender.hp = Math.min(defender.maxHp, prevHp - Math.max(1, Math.round(lostChip * 0.25)));
+            spawnCallout('⚔️ 心眼・見切り!! (削り75%軽減)', defender.x, defender.y - 145, '#22d3ee');
+        }
+
+        // ⚔️ 零式・ムサシの固有攻撃効果
+        if (attacker && attacker.id === 'musashi' && defender && defender.hp > 0) {
+            if (move.isMusashiBleed) {
+                defender.burnTimer = 180;
+                spawnCallout('🔥 紅蓮抜刀・劫火!!', defender.x, defender.y - 185, '#f43f5e');
+            }
+            if (move.isDimensionCut) {
+                defender.timeStopTimer = 75;
+                sfx.katanaSlashSound();
+                spawnHitSparks(defender.x, defender.y - 95, '#22d3ee', 24);
+                spawnHitSparks(defender.x, defender.y - 95, '#f43f5e', 24);
+                spawnCallout('⚔️ 秘剣・空間次元斬!! (次元停止)', defender.x, defender.y - 195, '#22d3ee');
+            }
+        }
+
+        // ✝️ ヨハネ神父の固有攻撃効果（強：悪魔の獄炎 / 必殺・超：神と悪魔の同時裁き）
+        if (attacker && attacker.id === 'father' && defender && defender.hp > 0) {
+            if (move.isDemonHellfire) {
+                defender.burnTimer = 180;
+                spawnCallout('😈 魔王獄炎・黒炎上!!', defender.x, defender.y - 185, '#ef4444');
+            }
+            if (move.isGodAndDemon) {
+                defender.burnTimer = 240;
+                defender.timeStopTimer = 85;
+                sfx.godDemonBellSound();
+                spawnHitSparks(defender.x, defender.y - 95, '#fde047', 26);
+                spawnHitSparks(defender.x, defender.y - 95, '#ef4444', 26);
+                spawnCallout('✝️😈 神と悪魔の同時裁き!! (聖光停止＆獄炎)', defender.x, defender.y - 195, '#fde047');
+            }
+        }
+
         if (isOnlineMode && onlineConnected && defender && defender.hp < prevHp) {
             var isMyAttack = (onlineRole === 'host' && attacker.isP1) || (onlineRole === 'guest' && !attacker.isP1);
             if (isMyAttack) {
@@ -14650,7 +15764,7 @@ function initAll30CharsPatch() {
 
         var jumpVel = (typeof JUMP_VELOCITY === 'number') ? JUMP_VELOCITY : -16.5;
         var moveSpd = (typeof MOVE_SPEED === 'number') ? MOVE_SPEED : 6.5;
-        if (f.id === 'baby') moveSpd *= 1.18;
+        if (f.id === 'baby' || f.id === 'musashi') moveSpd *= 1.15;
         if ((f.inkBlindTimer || 0) > 0) moveSpd *= 0.72;
         if (f.id === 'traffic' && f.trafficColor === 'green') moveSpd *= 1.35;
 
@@ -14685,6 +15799,41 @@ function initAll30CharsPatch() {
         }
     }
 
+    // ★看護師長の「状態異常完全無効＆時間経過で体力が徐々に減って自滅する」処理を毎フレーム適用するヘルパー
+    function processMatronAutoSelfDestruct(fighter, opponent) {
+        if (!fighter || fighter.id !== 'matron' || gameState !== 'playing' || fighter.hp <= 0) return;
+
+        // 外部からの状態異常（時間停止・氷結・無重力・感染・火傷等）はすべて跳ね返して無効化
+        fighter.timeStopTimer    = 0;
+        fighter.freezeTimer      = 0;
+        fighter.zeroGravityTimer = 0;
+        fighter.infectionTimer   = 0;
+        fighter.burnTimer        = 0;
+        fighter.xrayExposedTimer = 0;
+        fighter.inkBlindTimer    = 0;
+        fighter.saunaHeatStacks  = 0;
+        if (fighter.state === 'hit' || fighter.state === 'dizzy') {
+            fighter.state = 'idle';
+            fighter.stateTimer = 0;
+        }
+
+        // 約26秒（1560フレーム）で最大HPから0まで徐々に減っていく自滅スリップ
+        var drainAmount = fighter.maxHp / (26 * 60);
+        fighter.hp = Math.max(0, fighter.hp - drainAmount);
+
+        if (fighter.hp <= 0) {
+            fighter.hp = 0;
+            fighter.displayHp = 0;
+            fighter.state = 'ko';
+            sfx.koSound();
+            spawnCallout('🏥 激務限界…看護師長・時間経過で自滅KO!!', fighter.x, fighter.y - 185, '#f43f5e');
+            var winOpponent = opponent || (fighter.isP1 ? player2 : player1);
+            if (winOpponent && gameState === 'playing') {
+                handleRoundEnd(winOpponent);
+            }
+        }
+    }
+
     var prevFighterUpdateOnline = Fighter.prototype.update;
     Fighter.prototype.update = function(opponent) {
         if (isOnlineMode && onlineConnected && gameState === 'playing') {
@@ -14712,6 +15861,7 @@ function initAll30CharsPatch() {
                 }
 
                 prevFighterUpdateOnline.call(this, opponent);
+                processMatronAutoSelfDestruct(this, opponent);
 
                 if (this.isP1) {
                     var p1Pad = (onlineRole === 'host') ? myLocalPad : remoteOnlinePad;
@@ -14752,6 +15902,7 @@ function initAll30CharsPatch() {
             return;
         }
         prevFighterUpdateOnline.call(this, opponent);
+        processMatronAutoSelfDestruct(this, opponent);
     };
 
     function buildSafePos(f) {
@@ -14864,14 +16015,17 @@ function initAll30CharsPatch() {
         enforceAlleyStageAndRockBgm(true);
     };
 
-    function initOnlineVsPatchV12() {
+    function initOnlineVsPatchV14() {
+        ensureSecretPassCharsDOM();
         backupOriginalMoveLabels();
         injectOnlineUI();
         enforceAlleyStageAndRockBgm(true);
+        updateTitleUnlockStatus();
+        refreshCharacterCardsUI();
     }
 
-    initOnlineVsPatchV12();
-    window.addEventListener('DOMContentLoaded', initOnlineVsPatchV12);
+    initOnlineVsPatchV14();
+    window.addEventListener('DOMContentLoaded', initOnlineVsPatchV14);
 })();
 </script>
 </body>
