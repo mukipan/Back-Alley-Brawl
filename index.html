@@ -12993,12 +12993,18 @@ function initAll30CharsPatch() {
     window.addEventListener('DOMContentLoaded', initAll30CharsPatch);
 })();
 </script>
-<!-- ==================== 🌐 PeerJS オンライン通信対戦拡張パッチ（V11最終完成版：ステージ/BGM選択完全非表示・ホスト専用ルール選択＆ゲスト明記） ==================== -->
+<!-- ==================== 🌐 PeerJS オンライン通信対戦＆最終調整パッチ（V12：解放暗号ボタン1本化・ドラゴン飛行完全無敵・路地裏/BGM固定・ホスト強化設定） ==================== -->
+<style>
+/* タイトル画面の「💰BP暗号」ボタンを非表示にし、「🔑解放暗号」の1つだけに統一 */
+#btn-bp-secret-title {
+    display: none !important;
+}
+</style>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (function() {
-    if (window.__ONLINE_VS_PATCH_V11_LOADED__) return;
-    window.__ONLINE_VS_PATCH_V11_LOADED__ = true;
+    if (window.__ONLINE_VS_PATCH_V12_LOADED__) return;
+    window.__ONLINE_VS_PATCH_V12_LOADED__ = true;
 
     if (typeof window.Peer === 'undefined') {
         var fallbackScript = document.createElement('script');
@@ -13052,13 +13058,16 @@ function initAll30CharsPatch() {
     }
 
     function enforceAlleyStageAndRockBgm(applyClickAlso) {
-        // 内部変数を「路地裏(alley)」と「BGM1(ロック)」に強制固定
         try { if (typeof selectedStageId !== 'undefined') selectedStageId = 'alley'; } catch (e) {}
         try { if (typeof currentStageId !== 'undefined')  currentStageId  = 'alley'; } catch (e) {}
         try { if (typeof selectedStage !== 'undefined')   selectedStage   = 'alley'; } catch (e) {}
         try { if (typeof selectedBgmTrack !== 'undefined') selectedBgmTrack = 1; } catch (e) {}
         try { if (typeof currentBgmMode !== 'undefined')   currentBgmMode   = 1; } catch (e) {}
         try { if (typeof bgmTrack !== 'undefined')         bgmTrack         = 1; } catch (e) {}
+
+        // タイトル画面の「💰BP暗号」ボタンも確実に隠す
+        var bpBtn = document.getElementById('btn-bp-secret-title');
+        if (bpBtn) hideElementCompletely(bpBtn);
 
         var selectScreen = document.getElementById('char-select-screen');
         if (!selectScreen) return;
@@ -13091,7 +13100,6 @@ function initAll30CharsPatch() {
 
             if (isStageOrBgmBtn) {
                 hideElementCompletely(b);
-                // ボタンを囲む行（親・祖父母要素）も、キャラカードやスタートボタンを含まない限り丸ごと非表示にする
                 var parent = b.parentElement;
                 while (parent && parent !== selectScreen) {
                     var hasCharCards = parent.querySelector('#p1-card-ryuji');
@@ -13107,7 +13115,6 @@ function initAll30CharsPatch() {
             }
         }
 
-        // 「ステージ:」「BGM:」というラベル文字単体の要素も探して行ごと完全に非表示にする
         var allEls = selectScreen.querySelectorAll('span, div, p, label');
         for (var j = 0; j < allEls.length; j++) {
             var el = allEls[j];
@@ -13134,7 +13141,6 @@ function initAll30CharsPatch() {
         }
     }
 
-    // 本体側にステージ変更・BGM変更関数があれば、常に路地裏・BGM1になるようフック
     if (typeof window.selectStage === 'function') {
         var origSelectStage = window.selectStage;
         window.selectStage = function() {
@@ -13148,7 +13154,6 @@ function initAll30CharsPatch() {
         };
     }
 
-    // 全30キャラの本来の技ボタンラベル辞書をバックアップ保存
     var SAVED_CHAR_MOVE_LABELS = {};
     function backupOriginalMoveLabels() {
         if (typeof CHAR_MOVE_BUTTON_LABELS === 'undefined') return;
@@ -13472,8 +13477,8 @@ function initAll30CharsPatch() {
         ];
         btnMap.forEach(function(item) {
             var el = document.getElementById(item.id);
-            if (!el || el.dataset.onlineBoundV11) return;
-            el.dataset.onlineBoundV11 = '1';
+            if (!el || el.dataset.onlineBoundV12) return;
+            el.dataset.onlineBoundV12 = '1';
 
             var setPress = function(val) {
                 myLocalPad[item.key] = val;
@@ -13489,8 +13494,8 @@ function initAll30CharsPatch() {
             el.addEventListener('mouseup', function() { setPress(false); });
         });
 
-        if (!window.__ONLINE_GLOBAL_ATK_CAPTURE_V11__) {
-            window.__ONLINE_GLOBAL_ATK_CAPTURE_V11__ = true;
+        if (!window.__ONLINE_GLOBAL_ATK_CAPTURE_V12__) {
+            window.__ONLINE_GLOBAL_ATK_CAPTURE_V12__ = true;
             var lastAtkInputTime = 0;
 
             var globalAttackInterceptor = function(e) {
@@ -13514,8 +13519,8 @@ function initAll30CharsPatch() {
             window.addEventListener('click',       globalAttackInterceptor, { capture: true, passive: false });
         }
 
-        if (!window.__ONLINE_KEY_V11_BOUND__) {
-            window.__ONLINE_KEY_V11_BOUND__ = true;
+        if (!window.__ONLINE_KEY_V12_BOUND__) {
+            window.__ONLINE_KEY_V12_BOUND__ = true;
             window.addEventListener('keydown', function(e) {
                 if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') myLocalPad.left  = true;
                 if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') myLocalPad.right = true;
@@ -13662,7 +13667,6 @@ function initAll30CharsPatch() {
             parentGrid.appendChild(onBtn);
         }
 
-        // ★キャラ選択画面の上部バー：ホストには「切り替えボタン」を表示し、ゲストには「ホストが設定中のルール（強化あり/なし）」を大きく明記！
         var selectScreen = document.getElementById('char-select-screen');
         if (selectScreen && !document.getElementById('online-select-bar')) {
             var bar = document.createElement('div');
@@ -13680,7 +13684,6 @@ function initAll30CharsPatch() {
                         '<button type="button" onclick="disconnectOnlineAndExit()" class="px-2.5 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-black text-[10px] shadow cursor-pointer">🔌 切断して退出</button>' +
                     '</div>' +
                 '</div>' +
-                '<!-- ホスト用ルール切替UI ＆ ゲスト用ホスト設定ルール明記バナー -->' +
                 '<div class="flex items-center justify-between gap-2 pt-1 border-t border-zinc-800">' +
                     '<div id="online-rule-guest-notice" class="w-full py-1 px-2.5 rounded-lg text-center font-black text-[11px] sm:text-xs"></div>' +
                     '<button type="button" id="online-bar-rule-btn" onclick="toggleOnlineUpgradeRule()" class="hidden w-full py-1 px-3 rounded-lg font-black text-[11px] sm:text-xs cursor-pointer transition-all shadow"></button>' +
@@ -13698,7 +13701,6 @@ function initAll30CharsPatch() {
             document.body.appendChild(discBtn);
         }
 
-        // ★オンラインロビーモーダル：強化あり/なしの選択ボタンを「🏠 部屋を作る（1Pホスト）」の枠内に配置し、ホストだけが選択する設計に統一
         var existingLobby = document.getElementById('online-lobby-modal');
         if (existingLobby) existingLobby.remove();
 
@@ -13715,7 +13717,6 @@ function initAll30CharsPatch() {
                     '<button type="button" onclick="disconnectOnlineAndExit()" class="px-2.5 py-1 rounded-lg bg-rose-700 hover:bg-rose-600 text-[11px] font-black text-white cursor-pointer">🔌 切断 / 閉じる</button>' +
                 '</div>' +
 
-                '<!-- 1P ホスト専用：ルール選択＋部屋作成 -->' +
                 '<div class="p-3 rounded-xl bg-zinc-950 border-2 border-emerald-500/70 flex flex-col gap-2.5">' +
                     '<div class="flex items-center justify-between">' +
                         '<span class="text-xs sm:text-sm font-black text-emerald-300">🏠 部屋を作る（1Pホスト・左側）</span>' +
@@ -13742,7 +13743,6 @@ function initAll30CharsPatch() {
                     '</div>' +
                 '</div>' +
 
-                '<!-- 2P ゲスト専用：部屋に入る（ルール選択なし・ホスト設定が入室後に明記される） -->' +
                 '<div class="p-3 rounded-xl bg-zinc-950 border-2 border-sky-500/60 flex flex-col gap-2">' +
                     '<div class="flex items-center justify-between">' +
                         '<span class="text-xs sm:text-sm font-black text-sky-300">🚀 部屋に入る（2Pゲスト・右側）</span>' +
@@ -13768,7 +13768,7 @@ function initAll30CharsPatch() {
 
     window.setOnlineUpgradeRule = function(useUpg) {
         if (isOnlineMode && onlineConnected && onlineRole !== 'host') {
-            return; // 接続中はホストのみ変更可能
+            return;
         }
         sfx.init(); sfx.block();
         onlineUseUpgrades = !!useUpg;
@@ -13785,7 +13785,6 @@ function initAll30CharsPatch() {
         window.setOnlineUpgradeRule(!onlineUseUpgrades);
     };
 
-    // ★ホスト用切り替えボタンと、ゲスト用の「ホスト設定ルール表示バナー」を更新する関数
     function updateOnlineRuleButtonsUI() {
         var fairBtn = document.getElementById('lobby-rule-fair');
         var upgBtn  = document.getElementById('lobby-rule-upg');
@@ -13804,7 +13803,6 @@ function initAll30CharsPatch() {
         if (!barRuleBtn || !guestNotice) return;
 
         if (onlineRole === 'host') {
-            // ホスト画面：クリックして強化反映あり/なしを切り替えられるボタンを表示
             guestNotice.classList.add('hidden');
             barRuleBtn.classList.remove('hidden');
             if (onlineUseUpgrades) {
@@ -13815,7 +13813,6 @@ function initAll30CharsPatch() {
                 barRuleBtn.className = 'w-full py-1 px-3 rounded-lg border-2 border-sky-400 bg-sky-950/90 hover:bg-sky-900 text-sky-200 font-black text-[11px] sm:text-xs cursor-pointer shadow';
             }
         } else {
-            // ゲスト画面：切り替えボタンは出さず、ホストが選択しているルールを大きくはっきり記載
             barRuleBtn.classList.add('hidden');
             guestNotice.classList.remove('hidden');
             if (onlineUseUpgrades) {
@@ -14073,7 +14070,6 @@ function initAll30CharsPatch() {
                     remotePeerAuraId = pkt.auraId;
                     remoteReadyState = !!pkt.ready;
 
-                    // ★ゲスト側は常にホストから送られてくる最新の強化反映設定（useUpgrades）に同期する！
                     if (onlineRole === 'guest') {
                         onlineUseUpgrades = pkt.useUpgrades;
                     }
@@ -14134,6 +14130,10 @@ function initAll30CharsPatch() {
                     if (gameState === 'playing' && player1 && player2) {
                         var defF = pkt.targetIsP1 ? player1 : player2;
                         var atkF = pkt.targetIsP1 ? player2 : player1;
+                        // ドラゴンが飛行中（!isGrounded）の場合は通信経由のダメージも0に無効化
+                        if (defF.id === 'dragon' && !defF.isGrounded) {
+                            return;
+                        }
                         if (pkt.hp < defF.hp) {
                             defF.hp = pkt.hp;
                             defF.state = (defF.hp <= 0) ? 'ko' : 'hit';
@@ -14290,7 +14290,6 @@ function initAll30CharsPatch() {
             setOpponentSelectBoxVisibility(true);
             syncMoveLabelDictionaryForRole();
 
-            // キャラ選択画面の最上部サブタイトルにもホストのルール設定を明記
             var subEl = document.getElementById('select-mode-subtitle');
             if (subEl) {
                 subEl.textContent = onlineUseUpgrades
@@ -14489,7 +14488,7 @@ function initAll30CharsPatch() {
     };
 
     // =========================================================================
-    // 7. バトル中の1P(左) / 2P(右) 完全分離操作＆ヒット・ラウンド勝敗同期エンジン
+    // 7. バトル中の1P/2P完全分離操作 ＆ ドラゴン飛行中「完全無敵（0ダメージ）」保護
     // =========================================================================
     var prevUpdateCPUOnline = updateCPU;
     updateCPU = function() {
@@ -14545,8 +14544,65 @@ function initAll30CharsPatch() {
         origTriggerAttackOnline(type);
     };
 
+    // ★ドラゴン飛行中に攻撃を受けた際、内部のKO判定（checkKO）が誤発火しないようブロック
+    var prevCheckKODragonGuard = checkKO;
+    var isDragonAirInvincibleActive = false;
+    checkKO = function(attacker, defender, move) {
+        if (isDragonAirInvincibleActive || (defender && defender.id === 'dragon' && !defender.isGrounded)) {
+            return;
+        }
+        prevCheckKODragonGuard(attacker, defender, move);
+    };
+
+    // ★ドラゴンの飛行中（!defender.isGrounded）は「今の文字」をそのまま表示させつつ、受けるダメージを完全に0（ノーダメージ＆状態異常無効）にする！
     var prevResolveHitOnline = resolveHit;
     resolveHit = function(attacker, defender, move) {
+        if (defender && defender.id === 'dragon' && !defender.isGrounded) {
+            var savedHp      = defender.hp;
+            var savedDispHp  = defender.displayHp;
+            var savedMaxHp   = defender.maxHp;
+            var savedState   = defender.state;
+            var savedStTimer = defender.stateTimer;
+            var savedVx      = defender.vx;
+            var savedVy      = defender.vy;
+            var savedDizzy   = defender.dizzyTimer || 0;
+            var savedInf     = defender.infectionTimer || 0;
+            var savedBurn    = defender.burnTimer || 0;
+            var savedFreeze  = defender.freezeTimer || 0;
+            var savedStop    = defender.timeStopTimer || 0;
+            var savedZeroG   = defender.zeroGravityTimer || 0;
+            var savedXray    = defender.xrayExposedTimer || 0;
+            var savedInk     = defender.inkBlindTimer || 0;
+            var savedSauna   = defender.saunaHeatStacks || 0;
+
+            isDragonAirInvincibleActive = true;
+            try {
+                // 既存のresolveHitを実行して「今の文字（飛行無敵テキスト）」をそのまま出させる
+                prevResolveHitOnline(attacker, defender, move);
+            } finally {
+                isDragonAirInvincibleActive = false;
+            }
+
+            // ダメージ・のけぞり・デバフをすべて攻撃前の状態へ完全復元（0ダメージ化）
+            defender.maxHp            = savedMaxHp;
+            defender.hp               = savedHp;
+            defender.displayHp        = savedDispHp;
+            defender.state            = (savedState === 'hit' || savedState === 'ko' || savedState === 'dizzy') ? 'jump' : savedState;
+            defender.stateTimer       = savedStTimer;
+            defender.vx               = savedVx;
+            defender.vy               = savedVy;
+            defender.dizzyTimer       = savedDizzy;
+            defender.infectionTimer   = savedInf;
+            defender.burnTimer        = savedBurn;
+            defender.freezeTimer      = savedFreeze;
+            defender.timeStopTimer    = savedStop;
+            defender.zeroGravityTimer = savedZeroG;
+            defender.xrayExposedTimer = savedXray;
+            defender.inkBlindTimer    = savedInk;
+            defender.saunaHeatStacks  = savedSauna;
+            return;
+        }
+
         var prevHp = defender ? defender.hp : 0;
         prevResolveHitOnline(attacker, defender, move);
         if (isOnlineMode && onlineConnected && defender && defender.hp < prevHp) {
@@ -14808,14 +14864,14 @@ function initAll30CharsPatch() {
         enforceAlleyStageAndRockBgm(true);
     };
 
-    function initOnlineVsPatchV11() {
+    function initOnlineVsPatchV12() {
         backupOriginalMoveLabels();
         injectOnlineUI();
         enforceAlleyStageAndRockBgm(true);
     }
 
-    initOnlineVsPatchV11();
-    window.addEventListener('DOMContentLoaded', initOnlineVsPatchV11);
+    initOnlineVsPatchV12();
+    window.addEventListener('DOMContentLoaded', initOnlineVsPatchV12);
 })();
 </script>
 </body>
