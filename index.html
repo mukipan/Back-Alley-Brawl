@@ -12993,12 +12993,12 @@ function initAll30CharsPatch() {
     window.addEventListener('DOMContentLoaded', initAll30CharsPatch);
 })();
 </script>
-<!-- ==================== 🌐 PeerJS オンライン通信対戦拡張パッチ（V5完全決定版：操作ロック解除・黒画面解消・0.4秒自動キャラ同期） ==================== -->
+<!-- ==================== 🌐 PeerJS オンライン通信対戦拡張パッチ（V6完成版：両者スタート押下開始・1P/2P完全分離操作・双方向同期） ==================== -->
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (function() {
-    if (window.__ONLINE_VS_PATCH_V5_LOADED__) return;
-    window.__ONLINE_VS_PATCH_V5_LOADED__ = true;
+    if (window.__ONLINE_VS_PATCH_V6_LOADED__) return;
+    window.__ONLINE_VS_PATCH_V6_LOADED__ = true;
 
     if (typeof window.Peer === 'undefined') {
         var fallbackScript = document.createElement('script');
@@ -13007,9 +13007,13 @@ function initAll30CharsPatch() {
     }
 
     var ROOM_PREFIX = 'rojiura-brawl-v30-room-';
-    var ALLOWED_PACKET_TYPES = ['hello', 'rule_sync', 'char_select', 'pad', 'attack', 'pos_sync', 'match_state', 'start_match', 'start_request', 'round_next', 'rematch', 'bye'];
+    var ALLOWED_PACKET_TYPES = [
+        'hello', 'rule_sync', 'char_select', 'ready_sync', 'launch_match',
+        'pad', 'attack', 'p2_sync', 'match_state', 'round_next', 'rematch', 'bye'
+    ];
     var ALLOWED_MOVES = ['light', 'heavy', 'special', 'super'];
     var ALLOWED_AURAS = ['none', 'blue', 'emerald', 'purple', 'crimson', 'gold'];
+    var ALLOWED_STATES = ['idle', 'walk', 'jump', 'crouch', 'attack', 'hit', 'ko', 'dizzy'];
 
     var isOnlineMode = false;
     var onlineRole = null; // 'host' (1P・左側) | 'guest' (2P・右側)
@@ -13020,17 +13024,23 @@ function initAll30CharsPatch() {
     var onlineConnected = false;
     var selectSyncInterval = null;
 
-    // 自分と相手の選択キャラ・強化データ
+    // 自分と相手のキャラ選択・準備完了（READY）フラグ
     var myOnlineCharId = 'ryuji';
     var remotePeerCharId = 'takeshi';
     var remotePeerUpgrades = { atk: 1, hp: 1, mtr: 1 };
     var remotePeerAuraId = 'none';
+    var myReadyState = false;
+    var remoteReadyState = false;
+    var isLaunchingMatch = false;
 
-    // 操作パッド状態
-    var myTouchPad = { left: false, right: false, up: false, down: false };
+    // 自分自身の端末の十字キー／キーボード入力と、相手から届いた十字キー入力
+    var myLocalPad = { left: false, right: false, up: false, down: false };
     var remoteOnlinePad = { left: false, right: false, up: false, down: false };
     var lastSentPad = { left: false, right: false, up: false, down: false };
-    var suppressNetworkAttackEcho = false;
+
+    // 攻撃ルーティング制御用フラグ
+    var isExecutingRemoteAttack = false;
+    var isReroutingGuestAttack = false;
 
     // =========================================================================
     // 1. 厳格な数値・ホワイトリスト安全フィルター
@@ -13038,7 +13048,7 @@ function initAll30CharsPatch() {
     function clampNumber(val, min, max, fallback) {
         var n = Number(val);
         if (!Number.isFinite(n)) return fallback;
-        return Math.max(min, Math.min(max, n));
+        return Math.max(min, Math.min(max, fallback));
     }
 
     function clampInt(val, min, max, fallback) {
@@ -13054,12 +13064,12 @@ function initAll30CharsPatch() {
         };
     }
 
-    // 黒画面クラッシュを防ぐため、安全な数値座標・HP・ゲージのみを抽出
     function sanitizeSafePosition(f) {
         if (!f || typeof f !== 'object') return null;
         var sLeft = (typeof STAGE_LEFT === 'number') ? STAGE_LEFT : 60;
         var sRight = (typeof STAGE_RIGHT === 'number') ? STAGE_RIGHT : 900;
         var gY = (typeof GROUND_Y === 'number') ? GROUND_Y : 470;
+        var st = String(f.state || 'idle');
         return {
             x: clampNumber(f.x, sLeft, sRight, 240),
             y: clampNumber(f.y, -500, gY, gY),
@@ -13069,6 +13079,7 @@ function initAll30CharsPatch() {
             hp: clampNumber(f.hp, 0, 25000, 1000),
             maxHp: clampNumber(f.maxHp, 100, 25000, 1000),
             meter: clampNumber(f.meter, 0, 100, 0),
+            state: ALLOWED_STATES.includes(st) ? st : 'idle',
             isBlocking: !!f.isBlocking
         };
     }
@@ -13084,13 +13095,18 @@ function initAll30CharsPatch() {
 
         var clean = { type: type };
 
-        if (type === 'hello' || type === 'char_select' || type === 'start_match' || type === 'start_request') {
+        if (type === 'hello' || type === 'char_select' || type === 'ready_sync' || type === 'launch_match') {
             var cid = String(raw.charId || 'ryuji');
             clean.charId = ALL_CHAR_IDS.includes(cid) ? cid : 'ryuji';
+            var p1c = String(raw.p1CharId || 'ryuji');
+            var p2c = String(raw.p2CharId || 'takeshi');
+            clean.p1CharId = ALL_CHAR_IDS.includes(p1c) ? p1c : 'ryuji';
+            clean.p2CharId = ALL_CHAR_IDS.includes(p2c) ? p2c : 'takeshi';
             clean.upgrades = sanitizeUpgrades(raw.upgrades);
             var aid = String(raw.auraId || 'none');
             clean.auraId = ALLOWED_AURAS.includes(aid) ? aid : 'none';
             clean.useUpgrades = !!raw.useUpgrades;
+            clean.ready = !!raw.ready;
         } else if (type === 'rule_sync') {
             clean.useUpgrades = !!raw.useUpgrades;
         } else if (type === 'pad') {
@@ -13102,7 +13118,7 @@ function initAll30CharsPatch() {
             var mv = String(raw.moveType || 'light');
             if (!ALLOWED_MOVES.includes(mv)) return null;
             clean.moveType = mv;
-        } else if (type === 'pos_sync') {
+        } else if (type === 'p2_sync') {
             var pos = sanitizeSafePosition(raw.fighter);
             if (!pos) return null;
             clean.fighter = pos;
@@ -13159,18 +13175,8 @@ function initAll30CharsPatch() {
     }
 
     // =========================================================================
-    // 2. 十字キー＆キーボード入力の確実な取得
+    // 2. 十字キー＆キーボード入力の独立取得システム
     // =========================================================================
-    function getMyCurrentPadState() {
-        var sysIn = (typeof input !== 'undefined' && input) ? input : { left: false, right: false, up: false, down: false };
-        return {
-            left:  !!(sysIn.left  || myTouchPad.left),
-            right: !!(sysIn.right || myTouchPad.right),
-            up:    !!(sysIn.up    || myTouchPad.up),
-            down:  !!(sysIn.down  || myTouchPad.down)
-        };
-    }
-
     function bindOnlinePadEvents() {
         var btnMap = [
             { id: 'btn-left',  key: 'left' },
@@ -13180,11 +13186,11 @@ function initAll30CharsPatch() {
         ];
         btnMap.forEach(function(item) {
             var el = document.getElementById(item.id);
-            if (!el || el.dataset.onlineBoundV5) return;
-            el.dataset.onlineBoundV5 = '1';
+            if (!el || el.dataset.onlineBoundV6) return;
+            el.dataset.onlineBoundV6 = '1';
 
             var setPress = function(val) {
-                myTouchPad[item.key] = val;
+                myLocalPad[item.key] = val;
             };
             el.addEventListener('pointerdown', function() { setPress(true); });
             el.addEventListener('pointerup', function() { setPress(false); });
@@ -13192,9 +13198,26 @@ function initAll30CharsPatch() {
             el.addEventListener('pointerleave', function() { setPress(false); });
             el.addEventListener('touchstart', function() { setPress(true); }, { passive: true });
             el.addEventListener('touchend', function() { setPress(false); }, { passive: true });
+            el.addEventListener('touchcancel', function() { setPress(false); }, { passive: true });
             el.addEventListener('mousedown', function() { setPress(true); });
             el.addEventListener('mouseup', function() { setPress(false); });
         });
+
+        if (!window.__ONLINE_KEY_V6_BOUND__) {
+            window.__ONLINE_KEY_V6_BOUND__ = true;
+            window.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') myLocalPad.left  = true;
+                if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') myLocalPad.right = true;
+                if (e.key === 'ArrowUp'    || e.key === 'w' || e.key === 'W') myLocalPad.up    = true;
+                if (e.key === 'ArrowDown'  || e.key === 's' || e.key === 'S') myLocalPad.down  = true;
+            }, true);
+            window.addEventListener('keyup', function(e) {
+                if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') myLocalPad.left  = false;
+                if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') myLocalPad.right = false;
+                if (e.key === 'ArrowUp'    || e.key === 'w' || e.key === 'W') myLocalPad.up    = false;
+                if (e.key === 'ArrowDown'  || e.key === 's' || e.key === 'S') myLocalPad.down  = false;
+            }, true);
+        }
     }
 
     // =========================================================================
@@ -13245,7 +13268,7 @@ function initAll30CharsPatch() {
                     '<button type="button" id="online-bar-rule-btn" onclick="toggleOnlineUpgradeRule()" class="px-2 py-0.5 rounded border border-amber-400 bg-amber-950/80 text-amber-200 font-black text-[10px] cursor-pointer">⚖️ 強化なし</button>' +
                 '</div>' +
                 '<div class="flex items-center gap-1.5">' +
-                    '<span id="online-bar-peer-status" class="text-[10px] text-emerald-200 font-bold">相手: 龍</span>' +
+                    '<span id="online-bar-peer-status" class="text-[10px] text-emerald-200 font-bold">相手: 選択中</span>' +
                     '<button type="button" onclick="disconnectOnlineAndExit()" class="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-black text-[10px] shadow cursor-pointer">🔌 切断</button>' +
                 '</div>';
             selectScreen.insertBefore(bar, selectScreen.children[1]);
@@ -13289,7 +13312,7 @@ function initAll30CharsPatch() {
 
                     '<div class="p-3 rounded-xl bg-zinc-950 border border-emerald-500/60 flex flex-col gap-2">' +
                         '<div class="flex items-center justify-between">' +
-                            '<span class="text-xs font-black text-emerald-300">🏠 部屋を作る（あなたが 1P・左側）</span>' +
+                            '<span class="text-xs font-black text-emerald-300">🏠 部屋を作る（あなたが 1P・左キャラ操作）</span>' +
                             '<button type="button" onclick="createOnlineRoom()" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black text-xs shadow hover:brightness-110 cursor-pointer active:scale-95">🎲 6桁ルーム番号を発行</button>' +
                         '</div>' +
                         '<div id="host-room-box" class="hidden p-2.5 rounded-xl bg-zinc-900 border border-emerald-400/80 text-center">' +
@@ -13302,7 +13325,7 @@ function initAll30CharsPatch() {
                     '</div>' +
 
                     '<div class="p-3 rounded-xl bg-zinc-950 border border-sky-500/60 flex flex-col gap-2">' +
-                        '<span class="text-xs font-black text-sky-300">🚀 部屋に入る（あなたが 2P・右側）</span>' +
+                        '<span class="text-xs font-black text-sky-300">🚀 部屋に入る（あなたが 2P・右キャラ操作）</span>' +
                         '<div class="flex items-center gap-2">' +
                             '<input type="tel" id="guest-room-input" maxlength="6" placeholder="6桁の番号を入力" oninput="this.value = this.value.replace(/[^0-9]/g, \'\').slice(0, 6)" class="w-full px-3 py-2 rounded-xl bg-zinc-900 border-2 border-zinc-700 focus:border-sky-400 text-center text-lg font-black tracking-[0.2em] text-white outline-none font-mono" />' +
                             '<button type="button" onclick="joinOnlineRoom()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-500 text-white font-black text-xs whitespace-nowrap shadow hover:brightness-110 cursor-pointer active:scale-95">接続する</button>' +
@@ -13387,12 +13410,12 @@ function initAll30CharsPatch() {
 
     function startSelectHeartbeat() {
         stopSelectHeartbeat();
-        // キャラ選択画面にいる間、0.4秒ごとに自分の選択キャラを相手に送り続けてズレをゼロにする
         selectSyncInterval = setInterval(function() {
-            if (isOnlineMode && onlineConnected && gameState === 'select') {
-                sendOnlinePacket(getMyCharPacket('char_select'));
+            if (isOnlineMode && onlineConnected && gameState === 'select' && !isLaunchingMatch) {
+                sendOnlinePacket(getMyCharPacket('char_select', myReadyState));
+                checkAndTriggerBothReadyLaunch();
             }
-        }, 400);
+        }, 350);
     }
 
     function cleanupPeerConnection() {
@@ -13401,7 +13424,10 @@ function initAll30CharsPatch() {
         isOnlineMode = false;
         onlineRole = null;
         onlineRoomCode = '';
-        myTouchPad = { left: false, right: false, up: false, down: false };
+        myReadyState = false;
+        remoteReadyState = false;
+        isLaunchingMatch = false;
+        myLocalPad = { left: false, right: false, up: false, down: false };
         remoteOnlinePad = { left: false, right: false, up: false, down: false };
         if (peerConn) {
             try { peerConn.close(); } catch (e) {}
@@ -13432,7 +13458,7 @@ function initAll30CharsPatch() {
     };
 
     // =========================================================================
-    // 4. PeerJS ルーム作成（1Pホスト）＆ 入室（2Pゲスト）処理
+    // 4. PeerJS ルーム作成（1Pホスト）＆ 入室（2Pゲスト）＆ 両者READY確認処理
     // =========================================================================
     window.createOnlineRoom = function() {
         sfx.init(); sfx.superFlash();
@@ -13504,28 +13530,47 @@ function initAll30CharsPatch() {
         });
     };
 
-    function getMyCharPacket(typeStr) {
+    function getMyCharPacket(typeStr, readyFlag) {
         var cid = ALL_CHAR_IDS.includes(myOnlineCharId) ? myOnlineCharId : 'ryuji';
         var myUpg = (charUpgrades && charUpgrades[cid]) ? charUpgrades[cid] : { atk: 1, hp: 1, mtr: 1 };
+        var p1c = (onlineRole === 'host') ? cid : remotePeerCharId;
+        var p2c = (onlineRole === 'host') ? remotePeerCharId : cid;
         return {
             type: typeStr,
             charId: cid,
+            p1CharId: p1c,
+            p2CharId: p2c,
             upgrades: { atk: myUpg.atk || 1, hp: myUpg.hp || 1, mtr: myUpg.mtr || 1 },
             auraId: (typeof equippedAuraId !== 'undefined' && equippedAuraId) ? equippedAuraId : 'none',
-            useUpgrades: !!onlineUseUpgrades
+            useUpgrades: !!onlineUseUpgrades,
+            ready: !!readyFlag
         };
+    }
+
+    // ★1Pと2Pの両方がスタートボタン（準備完了）を押したかチェックし、揃っていたら試合を開始する関数
+    function checkAndTriggerBothReadyLaunch() {
+        if (!isOnlineMode || !onlineConnected || gameState !== 'select' || isLaunchingMatch) return;
+        if (myReadyState && remoteReadyState) {
+            isLaunchingMatch = true;
+            if (onlineRole === 'host') {
+                sendOnlinePacket(getMyCharPacket('launch_match', true));
+            }
+            executeOnlineMatchStart();
+        }
     }
 
     function onConnectionOpened() {
         if (onlineConnected) return;
         onlineConnected = true;
         isOnlineMode = true;
+        myReadyState = false;
+        remoteReadyState = false;
+        isLaunchingMatch = false;
         sfx.superFlash();
 
         var modal = document.getElementById('online-lobby-modal');
         if (modal) modal.classList.add('hidden');
 
-        // 1Pの初期キャラは龍、2Pの初期キャラはB-PANにして見分けやすくする
         myOnlineCharId = (onlineRole === 'host') ? 'ryuji' : 'takeshi';
         remotePeerCharId = (onlineRole === 'host') ? 'takeshi' : 'ryuji';
 
@@ -13541,7 +13586,7 @@ function initAll30CharsPatch() {
             selectedP2Id = myOnlineCharId;
         }
 
-        sendOnlinePacket(getMyCharPacket('hello'));
+        sendOnlinePacket(getMyCharPacket('hello', false));
         startSelectHeartbeat();
 
         refreshCharacterCardsUI();
@@ -13568,11 +13613,13 @@ function initAll30CharsPatch() {
                     return;
                 }
 
-                if (pkt.type === 'hello' || pkt.type === 'char_select') {
-                    var changed = (remotePeerCharId !== pkt.charId);
+                if (pkt.type === 'hello' || pkt.type === 'char_select' || pkt.type === 'ready_sync') {
+                    var charChanged = (remotePeerCharId !== pkt.charId);
                     remotePeerCharId = pkt.charId;
                     remotePeerUpgrades = pkt.upgrades;
                     remotePeerAuraId = pkt.auraId;
+                    remoteReadyState = !!pkt.ready;
+
                     if (onlineRole === 'guest' && pkt.type === 'hello') {
                         onlineUseUpgrades = pkt.useUpgrades;
                     }
@@ -13585,33 +13632,31 @@ function initAll30CharsPatch() {
                     }
                     updateOnlineRuleButtonsUI();
                     refreshCharacterCardsUI();
-                    if (changed && gameState === 'select') {
+                    if (charChanged && gameState === 'select') {
                         syncSelectPreviewFighters();
                     }
+                    // 両方ともスタートボタンを押した状態になったら試合開始！
+                    checkAndTriggerBothReadyLaunch();
                 } else if (pkt.type === 'rule_sync') {
                     if (onlineRole === 'guest') {
                         onlineUseUpgrades = pkt.useUpgrades;
                         updateOnlineRuleButtonsUI();
                         syncSelectPreviewFighters();
                     }
-                } else if (pkt.type === 'start_request') {
-                    if (onlineRole === 'host') {
+                } else if (pkt.type === 'launch_match') {
+                    if (gameState === 'select' && !isLaunchingMatch) {
+                        isLaunchingMatch = true;
                         remotePeerCharId = pkt.charId;
                         remotePeerUpgrades = pkt.upgrades;
                         remotePeerAuraId = pkt.auraId;
-                        selectedP1Id = myOnlineCharId;
-                        selectedP2Id = remotePeerCharId;
-                        sendOnlinePacket(getMyCharPacket('start_match'));
-                        executeOnlineMatchStart();
-                    }
-                } else if (pkt.type === 'start_match') {
-                    if (onlineRole === 'guest') {
-                        remotePeerCharId = pkt.charId;
-                        remotePeerUpgrades = pkt.upgrades;
-                        remotePeerAuraId = pkt.auraId;
-                        onlineUseUpgrades = pkt.useUpgrades;
-                        selectedP1Id = remotePeerCharId;
-                        selectedP2Id = myOnlineCharId;
+                        if (onlineRole === 'guest') {
+                            onlineUseUpgrades = pkt.useUpgrades;
+                            selectedP1Id = pkt.p1CharId;
+                            selectedP2Id = pkt.p2CharId;
+                        } else {
+                            selectedP1Id = myOnlineCharId;
+                            selectedP2Id = remotePeerCharId;
+                        }
                         executeOnlineMatchStart();
                     }
                 } else if (pkt.type === 'pad') {
@@ -13621,9 +13666,10 @@ function initAll30CharsPatch() {
                     remoteOnlinePad.down  = pkt.down;
                 } else if (pkt.type === 'attack') {
                     if (gameState === 'playing') {
+                        // ホストが受信したらplayer2(右)、ゲストが受信したらplayer1(左)が攻撃を発動！
                         var targetF = (onlineRole === 'host') ? player2 : player1;
                         if (targetF && targetF.hp > 0) {
-                            suppressNetworkAttackEcho = true;
+                            isExecutingRemoteAttack = true;
                             try {
                                 if (pkt.moveType === 'super') {
                                     if (targetF.meter >= 100 && targetF.infectionTimer <= 0 && targetF.state !== 'hit' && targetF.state !== 'ko') {
@@ -13635,15 +13681,17 @@ function initAll30CharsPatch() {
                                     targetF.startAttack(pkt.moveType);
                                 }
                             } finally {
-                                suppressNetworkAttackEcho = false;
+                                isExecutingRemoteAttack = false;
                             }
                         }
                     }
-                } else if (pkt.type === 'pos_sync') {
+                } else if (pkt.type === 'p2_sync') {
+                    // 2P(ゲスト)から届いたウメ婆等の右キャラ座標を1P(ホスト)画面のplayer2へ反映
                     if (onlineRole === 'host' && player2 && gameState === 'playing') {
-                        syncRemotePositionToP2(player2, pkt.fighter);
+                        syncGuestControlledP2ToHost(player2, pkt.fighter);
                     }
                 } else if (pkt.type === 'match_state') {
+                    // 1P(ホスト)から届いたP1座標＆HP・タイマー・勝敗数を2P(ゲスト)画面へ反映
                     if (onlineRole === 'guest' && player1 && player2) {
                         applyHostMatchStateToGuest(pkt);
                     }
@@ -13652,6 +13700,9 @@ function initAll30CharsPatch() {
                         startNextRound();
                     }
                 } else if (pkt.type === 'rematch') {
+                    myReadyState = false;
+                    remoteReadyState = false;
+                    isLaunchingMatch = false;
                     if (gameState === 'match_over' || gameState === 'playing') {
                         backToSelect();
                     }
@@ -13673,7 +13724,7 @@ function initAll30CharsPatch() {
     }
 
     // =========================================================================
-    // 5. 「自分のキャラ選択枠」だけで各自の解放キャラを選べる選択・開始システム
+    // 5. キャラ選択＆両者READYボタンシステム
     // =========================================================================
     var origOpenModeForOnline = window.openMode;
     window.openMode = function(mode) {
@@ -13693,6 +13744,8 @@ function initAll30CharsPatch() {
             sfx.init();
             playCharSelectVoice(charId);
             myOnlineCharId = charId;
+            // キャラを選び直したら自分の準備完了状態を一旦解除する
+            myReadyState = false;
             if (onlineRole === 'host') {
                 selectedP1Id = myOnlineCharId;
                 selectedP2Id = remotePeerCharId;
@@ -13702,7 +13755,7 @@ function initAll30CharsPatch() {
             }
             refreshCharacterCardsUI();
             syncSelectPreviewFighters();
-            sendOnlinePacket(getMyCharPacket('char_select'));
+            sendOnlinePacket(getMyCharPacket('char_select', false));
             return;
         }
         origSelectP1ForOnline(charId);
@@ -13753,20 +13806,20 @@ function initAll30CharsPatch() {
                 onBar.classList.remove('hidden');
                 var roleRoomEl = document.getElementById('online-bar-role-room');
                 if (roleRoomEl) {
-                    roleRoomEl.textContent = (onlineRole === 'host' ? '👑1P(左)' : '⚡2P(右)') + ' [ROOM:' + onlineRoomCode + ']';
+                    roleRoomEl.textContent = (onlineRole === 'host' ? '👑あなたは1P(左)' : '⚡あなたは2P(右)') + ' [ROOM:' + onlineRoomCode + ']';
                 }
                 var peerStEl = document.getElementById('online-bar-peer-status');
                 if (peerStEl) {
-                    var myName = CHAR_DISPLAY_NAMES[myOnlineCharId] || '龍';
                     var oppName = CHAR_DISPLAY_NAMES[remotePeerCharId] || 'B-PAN';
-                    peerStEl.textContent = '自分:' + myName + ' vs 相手:' + oppName;
+                    peerStEl.textContent = '相手(' + oppName + '): ' + (remoteReadyState ? '✅準備OK!' : '⏳選択中...');
+                    peerStEl.className = remoteReadyState ? 'text-[10px] text-amber-300 font-black animate-pulse' : 'text-[10px] text-emerald-200 font-bold';
                 }
                 updateOnlineRuleButtonsUI();
             }
 
             var p1NameBadge = document.getElementById('p1-selected-badge');
             if (p1NameBadge) {
-                p1NameBadge.textContent = CHAR_DISPLAY_NAMES[myOnlineCharId] || '龍';
+                p1NameBadge.textContent = (onlineRole === 'host' ? '1P(左): ' : '2P(右): ') + (CHAR_DISPLAY_NAMES[myOnlineCharId] || '龍');
             }
 
             ALL_CHAR_IDS.forEach(function(id) {
@@ -13798,12 +13851,24 @@ function initAll30CharsPatch() {
             });
 
             if (fightBtn) {
-                fightBtn.textContent = '🌐 FIGHT START !!（両者の画面で対戦開始）';
+                if (myReadyState && !remoteReadyState) {
+                    fightBtn.textContent = '✅ 準備完了！ 相手のスタートボタン押下を待っています...';
+                    fightBtn.className = "w-full max-w-4xl mx-auto mt-1 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-black text-sm sm:text-base tracking-wider shadow-lg cursor-pointer flex-shrink-0 animate-pulse";
+                } else if (!myReadyState && remoteReadyState) {
+                    fightBtn.textContent = '🔥 相手が準備完了しています！押すと対戦スタート！！';
+                    fightBtn.className = "w-full max-w-4xl mx-auto mt-1 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 text-white font-black text-sm sm:text-base tracking-wider shadow-lg cursor-pointer flex-shrink-0 animate-bounce";
+                } else {
+                    fightBtn.textContent = '🌐 対戦スタート（両方が押すとバトル開始！）';
+                    fightBtn.className = "w-full max-w-4xl mx-auto mt-1 py-2.5 rounded-2xl bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-white font-black text-sm sm:text-base tracking-wider shadow-lg cursor-pointer flex-shrink-0";
+                }
             }
         } else {
             setOpponentSelectBoxVisibility(false);
             if (onBar) onBar.classList.add('hidden');
-            if (fightBtn) fightBtn.textContent = '🔥 FIGHT START !!';
+            if (fightBtn) {
+                fightBtn.textContent = '🔥 FIGHT START !!';
+                fightBtn.className = "w-full max-w-4xl mx-auto mt-1 py-2.5 rounded-2xl bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-white font-black text-sm sm:text-base tracking-wider shadow-lg cursor-pointer flex-shrink-0";
+            }
         }
     };
 
@@ -13824,24 +13889,38 @@ function initAll30CharsPatch() {
             if (vsLabel) {
                 var p1N = CHAR_DISPLAY_NAMES[selectedP1Id] || '龍';
                 var p2N = CHAR_DISPLAY_NAMES[selectedP2Id] || 'B-PAN';
-                vsLabel.textContent = '1P: ' + p1N + '  VS  2P: ' + p2N;
+                vsLabel.textContent = '1P(左): ' + p1N + '  VS  2P(右): ' + p2N;
             }
             var statComp = document.getElementById('preview-stat-comparison');
             if (statComp) {
                 var s1 = computeFighterCombatStats(selectedP1Id, true);
                 var s2 = computeFighterCombatStats(selectedP2Id, false);
-                var ruleLabel = onlineUseUpgrades ? '🔥オンライン（強化・オーラ反映）' : '⚖️オンライン（強化なし・公平）';
-                statComp.textContent = ruleLabel + '：1P(HP:' + s1.maxHp + '/攻撃' + Math.round(s1.atkMult * 100) + '%) vs 2P(HP:' + s2.maxHp + '/攻撃' + Math.round(s2.atkMult * 100) + '%)';
+                var ruleLabel = onlineUseUpgrades ? '🔥強化あり' : '⚖️強化なし(公平)';
+                statComp.textContent = ruleLabel + ' ｜ 1P(HP:' + s1.maxHp + '/攻撃' + Math.round(s1.atkMult * 100) + '%) vs 2P(HP:' + s2.maxHp + '/攻撃' + Math.round(s2.atkMult * 100) + '%)';
             }
         }
     };
+
+    // ★2P(ゲスト)の時は、右下4つの技ボタン名を必ず自分の操作キャラ(player2)の技名にするフック
+    if (typeof window.updateMoveButtonLabels === 'function') {
+        var origUpdateMoveBtnLabels = window.updateMoveButtonLabels;
+        window.updateMoveButtonLabels = function(charId) {
+            if (isOnlineMode && onlineConnected) {
+                var myId = (onlineRole === 'host')
+                    ? (player1 ? player1.id : selectedP1Id)
+                    : (player2 ? player2.id : selectedP2Id);
+                return origUpdateMoveBtnLabels(myId);
+            }
+            return origUpdateMoveBtnLabels(charId);
+        };
+    }
 
     function executeOnlineMatchStart() {
         bindOnlinePadEvents();
         var discBtn = document.getElementById('btn-online-battle-disconnect');
         if (discBtn) discBtn.classList.remove('hidden');
 
-        myTouchPad = { left: false, right: false, up: false, down: false };
+        myLocalPad = { left: false, right: false, up: false, down: false };
         remoteOnlinePad = { left: false, right: false, up: false, down: false };
         lastSentPad = { left: false, right: false, up: false, down: false };
 
@@ -13853,7 +13932,6 @@ function initAll30CharsPatch() {
             selectedP2Id = myOnlineCharId;
         }
 
-        // 相手の選択キャラが自分の端末で未解放でも、試合開始チェックを確実に通過させる
         var savedV1 = vsUnlocked[selectedP1Id];
         var savedV2 = vsUnlocked[selectedP2Id];
         var savedC1 = challengeUnlocked[selectedP1Id];
@@ -13875,10 +13953,17 @@ function initAll30CharsPatch() {
         if (player1 && player2) {
             player1.name = CHAR_DISPLAY_NAMES[player1.id] || player1.name;
             player2.name = CHAR_DISPLAY_NAMES[player2.id] || player2.name;
+            if (onlineUseUpgrades) {
+                player1.auraId = (onlineRole === 'host') ? equippedAuraId : remotePeerAuraId;
+                player2.auraId = (onlineRole === 'guest') ? equippedAuraId : remotePeerAuraId;
+            } else {
+                player1.auraId = 'none';
+                player2.auraId = 'none';
+            }
         }
 
-        if (onlineRole === 'guest' && player2 && typeof updateMoveButtonLabels === 'function') {
-            updateMoveButtonLabels(player2.id);
+        if (typeof window.updateMoveButtonLabels === 'function') {
+            window.updateMoveButtonLabels(myOnlineCharId);
         }
 
         if (typeof resizeCanvas === 'function') {
@@ -13892,12 +13977,14 @@ function initAll30CharsPatch() {
     window.startGame = function() {
         if (isOnlineMode && onlineConnected) {
             sfx.init();
-            if (onlineRole === 'guest') {
-                sendOnlinePacket(getMyCharPacket('start_request'));
-                return;
-            }
-            sendOnlinePacket(getMyCharPacket('start_match'));
-            executeOnlineMatchStart();
+            // スタートボタンを押すと自分の準備完了（myReadyState）を切り替え、両方とも完了なら試合開始！
+            myReadyState = !myReadyState;
+            if (myReadyState) sfx.superFlash();
+            else sfx.block();
+
+            sendOnlinePacket(getMyCharPacket('ready_sync', myReadyState));
+            refreshCharacterCardsUI();
+            checkAndTriggerBothReadyLaunch();
             return;
         }
         var discBtn = document.getElementById('btn-online-battle-disconnect');
@@ -13906,30 +13993,63 @@ function initAll30CharsPatch() {
     };
 
     // =========================================================================
-    // 6. バトル中の完全人間操作（1P・2Pとも100%確実に移動・ジャンプ・攻撃が動く制御）
+    // 6. バトル中の1P(左) / 2P(右) 完全分離操作エンジン
     // =========================================================================
 
-    // CPU思考だけを完全に停止（プレイヤーの攻撃は一切ロックしない！）
+    // CPU思考を完全停止
     var prevUpdateCPUOnline = updateCPU;
     updateCPU = function() {
         if (isOnlineMode) return;
         prevUpdateCPUOnline();
     };
 
-    // 自分の操作キャラが startAttack を開始した瞬間に、相手へ攻撃パケットを自動送信
+    // ★2P(ゲスト)の端末で攻撃キーやボタンが押されたとき、P1(お化け)ではなく100%確実にP2(ウメ婆など右キャラ)が攻撃するインターセプト機構！
     var prevStartAttackOnline = Fighter.prototype.startAttack;
     Fighter.prototype.startAttack = function(type) {
-        var started = prevStartAttackOnline.call(this, type);
-        if (started && isOnlineMode && onlineConnected && gameState === 'playing' && !suppressNetworkAttackEcho) {
-            var isMyOwnFighter = (onlineRole === 'host' && this.isP1) || (onlineRole === 'guest' && !this.isP1);
-            if (isMyOwnFighter) {
-                sendOnlinePacket({ type: 'attack', moveType: type });
+        if (isOnlineMode && onlineConnected && gameState === 'playing') {
+            // 相手からの通信パケットによる攻撃実行はそのまま通す
+            if (isExecutingRemoteAttack) {
+                return prevStartAttackOnline.call(this, type);
             }
+
+            // 2P(ゲスト)の端末で本体コードが player1.startAttack を呼ぼうとした場合：
+            // player1 の攻撃を阻止し、代わりに自分の操作キャラである player2(右キャラ)で攻撃を発動させる！
+            if (onlineRole === 'guest' && this.isP1) {
+                if (player2 && player2.hp > 0 && !isReroutingGuestAttack) {
+                    isReroutingGuestAttack = true;
+                    try {
+                        if (type === 'super') {
+                            if (player2.meter >= 100 && player2.infectionTimer <= 0 && player2.state !== 'hit' && player2.state !== 'ko') {
+                                player2.meter = 0;
+                                if (typeof triggerSuperCutin === 'function') triggerSuperCutin(player2);
+                                player2.startAttack('super');
+                            }
+                        } else {
+                            player2.startAttack(type);
+                        }
+                    } finally {
+                        isReroutingGuestAttack = false;
+                    }
+                }
+                return false;
+            }
+
+            // 自分の担当キャラ（1Pホストならplayer1、2Pゲストならplayer2）の攻撃は実行して相手へパケット送信
+            var isMyAssignedFighter = (onlineRole === 'host' && this.isP1) || (onlineRole === 'guest' && !this.isP1);
+            if (isMyAssignedFighter) {
+                var ok = prevStartAttackOnline.call(this, type);
+                if (ok) {
+                    sendOnlinePacket({ type: 'attack', moveType: type });
+                }
+                return ok;
+            }
+
+            // それ以外の勝手な攻撃呼び出しはすべてブロック
+            return false;
         }
-        return started;
+        return prevStartAttackOnline.call(this, type);
     };
 
-    // 画面右下の技ボタン（弱・強・崩・超）が押されたとき、1Pホストならplayer1、2Pゲストならplayer2が技を出す
     var origTriggerAttackOnline = window.triggerAttack;
     window.triggerAttack = function(type) {
         if (isOnlineMode && onlineConnected) {
@@ -13954,124 +14074,134 @@ function initAll30CharsPatch() {
         origTriggerAttackOnline(type);
     };
 
-    // P2（右側ファイター）に人間の十字キー入力（移動・ジャンプ・しゃがみガード）を物理計算の「前」に適用する関数
-    function applyHumanPadBeforeUpdateP2(p2, pad, p1) {
-        if (!p2 || p2.hp <= 0 || gameState !== 'playing') return;
-        if (p2.timeStopTimer > 0 || p2.freezeTimer > 0 || p2.zeroGravityTimer > 0) return;
-        if (p2.state === 'hit' || p2.state === 'ko' || p2.state === 'dizzy' || p2.state === 'attack') return;
+    // ★1Pと2Pそれぞれに独立したパッド入力を適用して移動・ジャンプ・しゃがみガードを行う関数
+    function driveFighterWithPad(f, pad, opponent) {
+        if (!f || f.hp <= 0 || gameState !== 'playing') return;
+        if (f.timeStopTimer > 0 || f.freezeTimer > 0 || f.zeroGravityTimer > 0) return;
+        if (f.state === 'hit' || f.state === 'ko' || f.state === 'dizzy' || f.state === 'attack') return;
 
-        var effLeft  = (p2.infectionTimer > 0) ? pad.right : pad.left;
-        var effRight = (p2.infectionTimer > 0) ? pad.left  : pad.right;
-        var effUp    = (p2.infectionTimer > 0) ? pad.down  : pad.up;
-        var effDown  = (p2.infectionTimer > 0) ? pad.up    : pad.down;
+        var effLeft  = (f.infectionTimer > 0) ? pad.right : pad.left;
+        var effRight = (f.infectionTimer > 0) ? pad.left  : pad.right;
+        var effUp    = (f.infectionTimer > 0) ? pad.down  : pad.up;
+        var effDown  = (f.infectionTimer > 0) ? pad.up    : pad.down;
 
-        var holdingBack = (p2.facing === 1 && effLeft) || (p2.facing === -1 && effRight);
-        p2.isBlocking = !!(effDown || (holdingBack && p1 && p1.state === 'attack'));
+        var holdingBack = (f.facing === 1 && effLeft) || (f.facing === -1 && effRight);
+        f.isBlocking = !!(effDown || (holdingBack && opponent && opponent.state === 'attack'));
 
         var jumpVel = (typeof JUMP_VELOCITY === 'number') ? JUMP_VELOCITY : -16.5;
         var moveSpd = (typeof MOVE_SPEED === 'number') ? MOVE_SPEED : 6.5;
-        if (p2.id === 'baby') moveSpd *= 1.18;
-        if ((p2.inkBlindTimer || 0) > 0) moveSpd *= 0.72;
+        if (f.id === 'baby') moveSpd *= 1.18;
+        if ((f.inkBlindTimer || 0) > 0) moveSpd *= 0.72;
+        if (f.id === 'traffic' && f.trafficColor === 'green') moveSpd *= 1.35;
 
-        if (effUp && p2.isGrounded) {
-            p2.vy = jumpVel;
-            p2.isGrounded = false;
-            p2.state = 'jump';
+        if (effUp && f.isGrounded) {
+            f.vy = jumpVel;
+            f.isGrounded = false;
+            f.state = 'jump';
             sfx.whiff();
         }
 
-        if (p2.id === 'dragon' && !p2.isGrounded && effUp && p2.vy > -1.5) {
-            p2.vy = Math.sin(p2.animTime * 0.2) * 0.6;
+        if (f.id === 'dragon' && !f.isGrounded && effUp && f.vy > -1.5) {
+            f.vy = Math.sin(f.animTime * 0.2) * 0.6;
         }
 
-        if (effDown && p2.isGrounded) {
-            p2.state = 'crouch';
-            p2.vx = 0;
+        var sLeft = (typeof STAGE_LEFT === 'number') ? STAGE_LEFT : 60;
+        var sRight = (typeof STAGE_RIGHT === 'number') ? STAGE_RIGHT : 900;
+
+        if (effDown && f.isGrounded) {
+            f.state = 'crouch';
+            f.vx = 0;
         } else if (effLeft) {
-            p2.vx = -moveSpd;
-            if (p2.isGrounded) p2.state = 'walk';
+            f.vx = -moveSpd;
+            f.x = Math.max(sLeft, Math.min(sRight, f.x + f.vx));
+            if (f.isGrounded) f.state = 'walk';
         } else if (effRight) {
-            p2.vx = moveSpd;
-            if (p2.isGrounded) p2.state = 'walk';
+            f.vx = moveSpd;
+            f.x = Math.max(sLeft, Math.min(sRight, f.x + f.vx));
+            if (f.isGrounded) f.state = 'walk';
         } else {
-            p2.vx = 0;
-            if (p2.isGrounded) p2.state = 'idle';
+            f.vx = 0;
+            if (f.isGrounded) f.state = 'idle';
         }
     }
 
     var prevFighterUpdateOnline = Fighter.prototype.update;
     Fighter.prototype.update = function(opponent) {
         if (isOnlineMode && onlineConnected && gameState === 'playing') {
-            var curPad = getMyCurrentPadState();
-            if (curPad.left !== lastSentPad.left || curPad.right !== lastSentPad.right || curPad.up !== lastSentPad.up || curPad.down !== lastSentPad.down) {
-                lastSentPad.left  = curPad.left;
-                lastSentPad.right = curPad.right;
-                lastSentPad.up    = curPad.up;
-                lastSentPad.down  = curPad.down;
-                sendOnlinePacket({
-                    type: 'pad',
-                    left:  curPad.left,
-                    right: curPad.right,
-                    up:    curPad.up,
-                    down:  curPad.down
-                });
-            }
-
-            if (this.isP1) {
-                // P1（左側）の更新：ホスト画面なら自分の入力、ゲスト画面ならホストから届いたremoteOnlinePadを本体のinputに流し込んで更新！
-                var p1Pad = (onlineRole === 'host') ? curPad : remoteOnlinePad;
-                var hasGlobalInput = (typeof input !== 'undefined' && input);
-                var savedSysInput = hasGlobalInput ? { left: input.left, right: input.right, up: input.up, down: input.down } : null;
-                if (hasGlobalInput) {
-                    input.left  = p1Pad.left;
-                    input.right = p1Pad.right;
-                    input.up    = p1Pad.up;
-                    input.down  = p1Pad.down;
+            try {
+                // 自分のローカルパッド入力に変化があれば相手へ送信
+                if (myLocalPad.left !== lastSentPad.left || myLocalPad.right !== lastSentPad.right || myLocalPad.up !== lastSentPad.up || myLocalPad.down !== lastSentPad.down) {
+                    lastSentPad.left  = myLocalPad.left;
+                    lastSentPad.right = myLocalPad.right;
+                    lastSentPad.up    = myLocalPad.up;
+                    lastSentPad.down  = myLocalPad.down;
+                    sendOnlinePacket({
+                        type: 'pad',
+                        left:  !!myLocalPad.left,
+                        right: !!myLocalPad.right,
+                        up:    !!myLocalPad.up,
+                        down:  !!myLocalPad.down
+                    });
                 }
-                try {
-                    prevFighterUpdateOnline.call(this, opponent);
-                } finally {
-                    if (hasGlobalInput && savedSysInput) {
-                        input.left  = savedSysInput.left;
-                        input.right = savedSysInput.right;
-                        input.up    = savedSysInput.up;
-                        input.down  = savedSysInput.down;
+
+                // ★最重要：本体コードのグローバル `input` を一時的にすべて false に空回りさせ、
+                // 2P(PC)のキー操作で P1(お化け)が勝手に動いてしまう現象を100%完全に遮断する！
+                var hasGlobalInput = (typeof input !== 'undefined' && input);
+                if (hasGlobalInput) {
+                    input.left  = false;
+                    input.right = false;
+                    input.up    = false;
+                    input.down  = false;
+                }
+
+                // 物理・重力・攻撃判定・固有ギミックの更新を実行
+                prevFighterUpdateOnline.call(this, opponent);
+
+                // その直後に、1P(player1)には1Pホストのパッド、2P(player2)には2Pゲストのパッドだけを適用して移動させる！
+                if (this.isP1) {
+                    var p1Pad = (onlineRole === 'host') ? myLocalPad : remoteOnlinePad;
+                    driveFighterWithPad(this, p1Pad, opponent);
+                } else {
+                    var p2Pad = (onlineRole === 'host') ? remoteOnlinePad : myLocalPad;
+                    driveFighterWithPad(this, p2Pad, opponent);
+                }
+
+                // お互いの向き（facing）を常に相手のいる方向へ合わせる
+                if (opponent && this.state !== 'attack' && this.state !== 'hit' && this.state !== 'ko') {
+                    this.facing = (opponent.x >= this.x) ? 1 : -1;
+                }
+
+                // 2Pゲストの画面では、超必殺ゲージの点滅＆パーセント表示を自分の操作キャラ（player2）基準にする
+                if (onlineRole === 'guest' && !this.isP1) {
+                    var superBtn = document.getElementById('btn-super');
+                    if (superBtn) {
+                        if (this.meter >= 100 && this.infectionTimer <= 0) superBtn.classList.add('super-ready');
+                        else superBtn.classList.remove('super-ready');
+                        var pctSpan = superBtn.querySelector('span:last-child');
+                        if (pctSpan) pctSpan.textContent = Math.floor(this.meter) + '%';
                     }
                 }
-            } else {
-                // P2（右側）の更新：物理計算（prevFighterUpdateOnline）の「前」に速度・ジャンプをセットして確実に移動させる！
-                var p2Pad = (onlineRole === 'host') ? remoteOnlinePad : curPad;
-                applyHumanPadBeforeUpdateP2(this, p2Pad, opponent);
-                prevFighterUpdateOnline.call(this, opponent);
-            }
 
-            if (onlineRole === 'guest' && !this.isP1) {
-                var superBtn = document.getElementById('btn-super');
-                if (superBtn) {
-                    if (this.meter >= 100 && this.infectionTimer <= 0) superBtn.classList.add('super-ready');
-                    else superBtn.classList.remove('super-ready');
+                // 2フレームに1回、1Pホストは試合状態＋P1座標を送り、2Pゲストは自分の操作するP2座標を送る
+                if (!this.isP1 && frameCounter % 2 === 0 && player1 && player2) {
+                    if (onlineRole === 'host') {
+                        sendOnlinePacket({
+                            type: 'match_state',
+                            roundTimer: (typeof roundTimer !== 'undefined') ? roundTimer : 99,
+                            currentRound: (typeof currentRound !== 'undefined') ? currentRound : 1,
+                            p1Wins: (typeof p1RoundWins !== 'undefined') ? p1RoundWins : 0,
+                            p2Wins: (typeof p2RoundWins !== 'undefined') ? p2RoundWins : 0,
+                            p1: buildSafePos(player1),
+                            p2: buildSafePos(player2)
+                        });
+                    } else {
+                        sendOnlinePacket({
+                            type: 'p2_sync',
+                            fighter: buildSafePos(player2)
+                        });
+                    }
                 }
-            }
-
-            // 2フレームに1回、安全な数値座標とHP・ゲージのみを同期
-            if (!this.isP1 && frameCounter % 2 === 0 && player1 && player2) {
-                if (onlineRole === 'host') {
-                    sendOnlinePacket({
-                        type: 'match_state',
-                        roundTimer: (typeof roundTimer !== 'undefined') ? roundTimer : 99,
-                        currentRound: (typeof currentRound !== 'undefined') ? currentRound : 1,
-                        p1Wins: (typeof p1RoundWins !== 'undefined') ? p1RoundWins : 0,
-                        p2Wins: (typeof p2RoundWins !== 'undefined') ? p2RoundWins : 0,
-                        p1: buildSafePos(player1),
-                        p2: buildSafePos(player2)
-                    });
-                } else {
-                    sendOnlinePacket({
-                        type: 'pos_sync',
-                        fighter: buildSafePos(player2)
-                    });
-                }
-            }
+            } catch (err) {}
             return;
         }
         prevFighterUpdateOnline.call(this, opponent);
@@ -14087,53 +14217,71 @@ function initAll30CharsPatch() {
             hp: Math.round(f.hp),
             maxHp: Math.round(f.maxHp),
             meter: Math.round(f.meter * 10) / 10,
+            state: f.state,
             isBlocking: !!f.isBlocking
         };
     }
 
-    function syncRemotePositionToP2(target, snap) {
-        if (target.state !== 'hit' && target.state !== 'ko' && target.state !== 'dizzy') {
-            target.x += (snap.x - target.x) * 0.65;
-            target.y += (snap.y - target.y) * 0.65;
-            target.vx = snap.vx;
-            target.vy = snap.vy;
-            target.isBlocking = snap.isBlocking;
+    // 2P(ゲスト)から送られた右キャラ(player2)の位置を、1P(ホスト)画面のplayer2へスムーズに反映
+    function syncGuestControlledP2ToHost(targetP2, snap) {
+        if (targetP2.state !== 'hit' && targetP2.state !== 'ko' && targetP2.state !== 'dizzy') {
+            if (Math.abs(targetP2.x - snap.x) > 60) {
+                targetP2.x = snap.x;
+                targetP2.y = snap.y;
+            } else {
+                targetP2.x += (snap.x - targetP2.x) * 0.75;
+                targetP2.y += (snap.y - targetP2.y) * 0.75;
+            }
+            targetP2.vx = snap.vx;
+            targetP2.vy = snap.vy;
+            targetP2.isBlocking = snap.isBlocking;
+            if (targetP2.state !== 'attack' && snap.state !== 'attack') {
+                targetP2.state = snap.state;
+            }
         }
     }
 
+    // 1P(ホスト)から送られた左キャラ(player1)の位置と両者のHP・ゲージを、2P(ゲスト)画面へ反映
     function applyHostMatchStateToGuest(pkt) {
         if (typeof roundTimer !== 'undefined') roundTimer = pkt.roundTimer;
         if (typeof currentRound !== 'undefined') currentRound = pkt.currentRound;
         if (typeof p1RoundWins !== 'undefined') p1RoundWins = pkt.p1Wins;
         if (typeof p2RoundWins !== 'undefined') p2RoundWins = pkt.p2Wins;
 
-        syncSafeFighterPos(player1, pkt.p1, false);
-        syncSafeFighterPos(player2, pkt.p2, true);
+        // P1(ホスト操作キャラ)の位置と状態をゲスト画面に反映
+        if (player1.state !== 'hit' && player1.state !== 'ko') {
+            if (Math.abs(player1.x - pkt.p1.x) > 60) {
+                player1.x = pkt.p1.x;
+                player1.y = pkt.p1.y;
+            } else {
+                player1.x += (pkt.p1.x - player1.x) * 0.75;
+                player1.y += (pkt.p1.y - player1.y) * 0.75;
+            }
+            if (player1.state !== 'attack' && pkt.p1.state !== 'attack') {
+                player1.state = pkt.p1.state;
+            }
+        }
+        player1.facing = pkt.p1.facing;
+        player1.maxHp = pkt.p1.maxHp;
+        if (pkt.p1.hp < player1.hp) spawnHitSparks(player1.x, player1.y - 85, '#fde047', 8);
+        player1.hp = pkt.p1.hp;
+        player1.meter = pkt.p1.meter;
+        player1.isBlocking = pkt.p1.isBlocking;
+
+        // P2(ゲスト自身の操作キャラ)は、被弾時・KO時のみホスト座標に合わせ、普段の移動はゲスト自身の操作を優先してラグをゼロにする
+        if (player2.state === 'hit' || player2.state === 'ko' || Math.abs(player2.x - pkt.p2.x) > 120) {
+            player2.x = pkt.p2.x;
+            player2.y = pkt.p2.y;
+        }
+        player2.facing = pkt.p2.facing;
+        player2.maxHp = pkt.p2.maxHp;
+        if (pkt.p2.hp < player2.hp) spawnHitSparks(player2.x, player2.y - 85, '#ef4444', 8);
+        player2.hp = pkt.p2.hp;
+        player2.meter = pkt.p2.meter;
 
         if (gameState === 'playing' && (player1.hp <= 0 || player2.hp <= 0)) {
             var winner = player1.hp <= 0 ? player2 : player1;
             handleRoundEnd(winner);
-        }
-    }
-
-    function syncSafeFighterPos(target, snap, isGuestOwnFighter) {
-        if (Math.abs(target.x - snap.x) > 65 || target.state === 'hit' || target.state === 'ko') {
-            target.x = snap.x;
-            target.y = snap.y;
-        } else if (!isGuestOwnFighter) {
-            target.x += (snap.x - target.x) * 0.65;
-            target.y += (snap.y - target.y) * 0.65;
-        }
-        target.facing = snap.facing;
-        target.maxHp = snap.maxHp;
-
-        if (snap.hp < target.hp) {
-            spawnHitSparks(target.x, target.y - 85, '#fde047', 8);
-        }
-        target.hp = snap.hp;
-        target.meter = snap.meter;
-        if (!isGuestOwnFighter) {
-            target.isBlocking = snap.isBlocking;
         }
     }
 
@@ -14143,24 +14291,31 @@ function initAll30CharsPatch() {
             sendOnlinePacket({ type: 'round_next' });
         }
         prevStartNextRoundOnline();
+        if (isOnlineMode && onlineConnected && typeof window.updateMoveButtonLabels === 'function') {
+            window.updateMoveButtonLabels(myOnlineCharId);
+        }
     };
 
     var prevBackToSelectOnline = window.backToSelect;
     window.backToSelect = function() {
         var discBtn = document.getElementById('btn-online-battle-disconnect');
         if (discBtn) discBtn.classList.add('hidden');
+        myReadyState = false;
+        remoteReadyState = false;
+        isLaunchingMatch = false;
         if (isOnlineMode && onlineConnected) {
             sendOnlinePacket({ type: 'rematch' });
+            startSelectHeartbeat();
         }
         prevBackToSelectOnline();
     };
 
-    function initOnlineVsPatchV5() {
+    function initOnlineVsPatchV6() {
         injectOnlineUI();
     }
 
-    initOnlineVsPatchV5();
-    window.addEventListener('DOMContentLoaded', initOnlineVsPatchV5);
+    initOnlineVsPatchV6();
+    window.addEventListener('DOMContentLoaded', initOnlineVsPatchV6);
 })();
 </script>
 </body>
