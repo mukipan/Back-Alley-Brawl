@@ -12993,12 +12993,12 @@ function initAll30CharsPatch() {
     window.addEventListener('DOMContentLoaded', initAll30CharsPatch);
 })();
 </script>
-<!-- ==================== 🌐 PeerJS オンライン通信対戦拡張パッチ（V9完全決定版：ゲスト技パネル完全固定＆2P超必殺100%確実発動） ==================== -->
+<!-- ==================== 🌐 PeerJS オンライン通信対戦拡張パッチ（V11最終完成版：ステージ/BGM選択完全非表示・ホスト専用ルール選択＆ゲスト明記） ==================== -->
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (function() {
-    if (window.__ONLINE_VS_PATCH_V9_LOADED__) return;
-    window.__ONLINE_VS_PATCH_V9_LOADED__ = true;
+    if (window.__ONLINE_VS_PATCH_V11_LOADED__) return;
+    window.__ONLINE_VS_PATCH_V11_LOADED__ = true;
 
     if (typeof window.Peer === 'undefined') {
         var fallbackScript = document.createElement('script');
@@ -13019,11 +13019,12 @@ function initAll30CharsPatch() {
     var isOnlineMode = false;
     var onlineRole = null; // 'host' (1P・左側) | 'guest' (2P・右側)
     var onlineRoomCode = '';
-    var onlineUseUpgrades = false; // false: 強化なし(標準公平) / true: 強化あり(育成Lv.20＆オーラ有効)
+    var onlineUseUpgrades = false; // false: 強化反映なし(標準公平) / true: 強化反映あり(育成Lv.20＆オーラ有効)
     var peerInstance = null;
     var peerConn = null;
     var onlineConnected = false;
     var selectSyncInterval = null;
+    var launchRetryTimers = [];
 
     var myOnlineCharId = 'ryuji';
     var remotePeerCharId = 'takeshi';
@@ -13041,7 +13042,113 @@ function initAll30CharsPatch() {
     var isReroutingGuestAttack = false;
     var isApplyingRemoteRoundEnd = false;
 
-    // ★全30キャラの本来の技ボタンラベル辞書をバックアップ保存
+    // =========================================================================
+    // 0. ステージ選択・BGM選択UIを完全に消去し「路地裏＆BGM1ロック」に固定する機構
+    // =========================================================================
+    function hideElementCompletely(el) {
+        if (!el || !el.style) return;
+        el.classList.add('hidden');
+        el.style.setProperty('display', 'none', 'important');
+    }
+
+    function enforceAlleyStageAndRockBgm(applyClickAlso) {
+        // 内部変数を「路地裏(alley)」と「BGM1(ロック)」に強制固定
+        try { if (typeof selectedStageId !== 'undefined') selectedStageId = 'alley'; } catch (e) {}
+        try { if (typeof currentStageId !== 'undefined')  currentStageId  = 'alley'; } catch (e) {}
+        try { if (typeof selectedStage !== 'undefined')   selectedStage   = 'alley'; } catch (e) {}
+        try { if (typeof selectedBgmTrack !== 'undefined') selectedBgmTrack = 1; } catch (e) {}
+        try { if (typeof currentBgmMode !== 'undefined')   currentBgmMode   = 1; } catch (e) {}
+        try { if (typeof bgmTrack !== 'undefined')         bgmTrack         = 1; } catch (e) {}
+
+        var selectScreen = document.getElementById('char-select-screen');
+        if (!selectScreen) return;
+
+        var alleyBtn = null;
+        var rockBtn = null;
+        var buttons = selectScreen.querySelectorAll('button');
+
+        for (var i = 0; i < buttons.length; i++) {
+            var b = buttons[i];
+            if (b.id && (b.id.indexOf('p1-card-') === 0 || b.id.indexOf('p2-card-') === 0 || b.id.indexOf('ladder-step-') === 0)) continue;
+
+            var txt = (b.textContent || '').trim();
+            var oc = b.getAttribute('onclick') || '';
+            if (oc.indexOf('startGame') !== -1 || oc.indexOf('backToTitle') !== -1 || oc.indexOf('openProgressionModal') !== -1 || oc.indexOf('Online') !== -1 || oc.indexOf('disconnect') !== -1) continue;
+
+            if (txt.indexOf('路地裏') !== -1 || oc.indexOf("'alley'") !== -1 || oc.indexOf('"alley"') !== -1) {
+                alleyBtn = b;
+            }
+            if (txt.indexOf('ロック') !== -1 || txt.indexOf('♪1') !== -1 || oc.indexOf('(1)') !== -1) {
+                rockBtn = b;
+            }
+
+            var isStageOrBgmBtn = (
+                txt.indexOf('路地裏') !== -1 || txt.indexOf('筋肉ジム') !== -1 || txt.indexOf('道場') !== -1 || txt.indexOf('神社') !== -1 ||
+                txt.indexOf('ロック') !== -1 || txt.indexOf('ビート') !== -1 || txt.indexOf('高速') !== -1 ||
+                txt.indexOf('♪1') !== -1 || txt.indexOf('♪2') !== -1 || txt.indexOf('♪3') !== -1 ||
+                oc.toLowerCase().indexOf('stage') !== -1 || oc.toLowerCase().indexOf('bgm') !== -1
+            );
+
+            if (isStageOrBgmBtn) {
+                hideElementCompletely(b);
+                // ボタンを囲む行（親・祖父母要素）も、キャラカードやスタートボタンを含まない限り丸ごと非表示にする
+                var parent = b.parentElement;
+                while (parent && parent !== selectScreen) {
+                    var hasCharCards = parent.querySelector('#p1-card-ryuji');
+                    var hasStartBtn  = parent.querySelector('button[onclick="startGame()"]');
+                    var hasTopBar    = parent.querySelector('#select-mode-title');
+                    if (!hasCharCards && !hasStartBtn && !hasTopBar) {
+                        hideElementCompletely(parent);
+                        parent = parent.parentElement;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 「ステージ:」「BGM:」というラベル文字単体の要素も探して行ごと完全に非表示にする
+        var allEls = selectScreen.querySelectorAll('span, div, p, label');
+        for (var j = 0; j < allEls.length; j++) {
+            var el = allEls[j];
+            if (el.children.length === 0) {
+                var t = (el.textContent || '').trim();
+                if (t === 'ステージ:' || t === 'ステージ：' || t === 'STAGE:' || t === 'BGM:' || t === 'BGM：') {
+                    hideElementCompletely(el);
+                    if (el.parentElement && el.parentElement !== selectScreen && !el.parentElement.querySelector('#p1-card-ryuji') && !el.parentElement.querySelector('button[onclick="startGame()"]')) {
+                        hideElementCompletely(el.parentElement);
+                    }
+                }
+            }
+        }
+
+        if (applyClickAlso) {
+            var prevSe = (typeof sfx !== 'undefined' && sfx) ? sfx.seEnabled : true;
+            try {
+                if (typeof sfx !== 'undefined' && sfx) sfx.seEnabled = false;
+                if (alleyBtn) alleyBtn.click();
+                if (rockBtn)  rockBtn.click();
+            } catch (e) {} finally {
+                if (typeof sfx !== 'undefined' && sfx) sfx.seEnabled = prevSe;
+            }
+        }
+    }
+
+    // 本体側にステージ変更・BGM変更関数があれば、常に路地裏・BGM1になるようフック
+    if (typeof window.selectStage === 'function') {
+        var origSelectStage = window.selectStage;
+        window.selectStage = function() {
+            return origSelectStage('alley');
+        };
+    }
+    if (typeof window.selectBgm === 'function') {
+        var origSelectBgm = window.selectBgm;
+        window.selectBgm = function() {
+            return origSelectBgm(1);
+        };
+    }
+
+    // 全30キャラの本来の技ボタンラベル辞書をバックアップ保存
     var SAVED_CHAR_MOVE_LABELS = {};
     function backupOriginalMoveLabels() {
         if (typeof CHAR_MOVE_BUTTON_LABELS === 'undefined') return;
@@ -13057,7 +13164,6 @@ function initAll30CharsPatch() {
     }
     backupOriginalMoveLabels();
 
-    // ★ゲスト側の時は、本体コードがどのキャラIDで技名を引いても必ず「自分が選んだキャラの技名」が返るように辞書自体を同期！
     function syncMoveLabelDictionaryForRole() {
         backupOriginalMoveLabels();
         if (typeof CHAR_MOVE_BUTTON_LABELS === 'undefined') return;
@@ -13249,14 +13355,12 @@ function initAll30CharsPatch() {
         var deck = document.getElementById('controller-deck');
         if (!deck) return;
 
-        // 4つの技ボタンを取得（.arcade-btn または 右側グリッド内のbutton）
         var atkBtns = deck.querySelectorAll('.arcade-btn');
         if (!atkBtns || atkBtns.length < 4) {
             var rightPanel = deck.lastElementChild;
             if (rightPanel) atkBtns = rightPanel.querySelectorAll('button');
         }
 
-        // ① 弱・強・崩の3つのボタンの技名テキストを自分の操作キャラの技名に確定上書き
         if (myLabels && atkBtns && atkBtns.length >= 3) {
             var mKeys = ['light', 'heavy', 'special'];
             for (var i = 0; i < 3; i++) {
@@ -13273,7 +13377,6 @@ function initAll30CharsPatch() {
             }
         }
 
-        // ② 4つ目の「🔥超必殺」ボタンの％表示と100%発光クラスを、自分の操作キャラ（ゲストはplayer2）のmeterに完全同期！
         var superBtn = document.getElementById('btn-super') || (atkBtns && atkBtns.length >= 4 ? atkBtns[3] : null);
         if (superBtn && myFighter) {
             var pct = Math.floor(Math.max(0, Math.min(100, Number(myFighter.meter) || 0)));
@@ -13294,7 +13397,6 @@ function initAll30CharsPatch() {
         }
     }
 
-    // ★本体コードの gameLoop（update ➔ draw ➔ updateHUD）がすべて終わった直後に毎フレーム必ず実行するフック
     if (!window.__ONLINE_RAF_HOOKED__) {
         window.__ONLINE_RAF_HOOKED__ = true;
         var origRAF = window.requestAnimationFrame;
@@ -13308,7 +13410,6 @@ function initAll30CharsPatch() {
         };
     }
 
-    // Canvas上の「CPU: ウメ婆」という描画テキストもオンライン時は自動的に「2P: ウメ婆」に変換
     if (!window.__ONLINE_CANVAS_TEXT_HOOKED__ && typeof CanvasRenderingContext2D !== 'undefined') {
         window.__ONLINE_CANVAS_TEXT_HOOKED__ = true;
         var origFillText = CanvasRenderingContext2D.prototype.fillText;
@@ -13330,7 +13431,7 @@ function initAll30CharsPatch() {
     }
 
     // =========================================================================
-    // 3. 最優先キャプチャ（windowレベル）による4つの技ボタン＆超必殺技100%確実発動システム
+    // 3. 最優先キャプチャによる4つの技ボタン＆超必殺技100%確実発動システム
     // =========================================================================
     function detectClickedAttackMoveType(targetEl) {
         if (!targetEl || !targetEl.closest) return null;
@@ -13371,8 +13472,8 @@ function initAll30CharsPatch() {
         ];
         btnMap.forEach(function(item) {
             var el = document.getElementById(item.id);
-            if (!el || el.dataset.onlineBoundV9) return;
-            el.dataset.onlineBoundV9 = '1';
+            if (!el || el.dataset.onlineBoundV11) return;
+            el.dataset.onlineBoundV11 = '1';
 
             var setPress = function(val) {
                 myLocalPad[item.key] = val;
@@ -13388,10 +13489,8 @@ function initAll30CharsPatch() {
             el.addEventListener('mouseup', function() { setPress(false); });
         });
 
-        // ★windowの最上位キャプチャフェーズで pointerdown / touchstart / mousedown / click を捕捉！
-        // これにより、本体コードの「P1のゲージが100%未満なら超必殺ボタンを弾く処理」よりも前に100%確実に割り込んで発動させる！
-        if (!window.__ONLINE_GLOBAL_ATK_CAPTURE_V9__) {
-            window.__ONLINE_GLOBAL_ATK_CAPTURE_V9__ = true;
+        if (!window.__ONLINE_GLOBAL_ATK_CAPTURE_V11__) {
+            window.__ONLINE_GLOBAL_ATK_CAPTURE_V11__ = true;
             var lastAtkInputTime = 0;
 
             var globalAttackInterceptor = function(e) {
@@ -13402,7 +13501,6 @@ function initAll30CharsPatch() {
                 e.stopImmediatePropagation();
                 if (e.cancelable) e.preventDefault();
 
-                // pointerdown ➔ mousedown ➔ click の連続発火を80msデバウンスで1回にまとめる
                 var now = performance.now();
                 if (now - lastAtkInputTime < 80) return;
                 lastAtkInputTime = now;
@@ -13416,8 +13514,8 @@ function initAll30CharsPatch() {
             window.addEventListener('click',       globalAttackInterceptor, { capture: true, passive: false });
         }
 
-        if (!window.__ONLINE_KEY_V9_BOUND__) {
-            window.__ONLINE_KEY_V9_BOUND__ = true;
+        if (!window.__ONLINE_KEY_V11_BOUND__) {
+            window.__ONLINE_KEY_V11_BOUND__ = true;
             window.addEventListener('keydown', function(e) {
                 if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') myLocalPad.left  = true;
                 if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') myLocalPad.right = true;
@@ -13450,7 +13548,6 @@ function initAll30CharsPatch() {
         }
     }
 
-    // ★指定したファイター（player1 または player2）で通常技・超必殺技を100%確実に発動する関数
     function performMoveOnFighter(targetF, moveType) {
         if (!targetF || targetF.hp <= 0 || gameState !== 'playing') return false;
         if ((targetF.timeStopTimer || 0) > 0 || (targetF.freezeTimer || 0) > 0 || (targetF.zeroGravityTimer || 0) > 0) return false;
@@ -13463,13 +13560,11 @@ function initAll30CharsPatch() {
             }
             if (targetF.state === 'attack' && targetF.attackType === 'super') return false;
 
-            // 通常攻撃モーション中からのキャンセル超必殺にも対応するため、一旦idleに戻してから発動
             if (targetF.state === 'attack') {
                 targetF.state = 'idle';
                 targetF.attackFrame = 0;
             }
 
-            // startAttack('super')の内部チェックを通過させるため、呼び出し時はmeter=100を保証し、P1チェック対策でplayer1.meterも一時退避
             var savedP1Meter = player1 ? player1.meter : 0;
             targetF.meter = 100;
             if (player1 && targetF === player2) {
@@ -13496,7 +13591,6 @@ function initAll30CharsPatch() {
                 }
             }
 
-            // 超必殺技が開始された後にゲージを0にする
             targetF.meter = 0;
             return true;
         } else {
@@ -13511,7 +13605,6 @@ function initAll30CharsPatch() {
         if (!myFighter || myFighter.hp <= 0) return;
 
         if (moveType === 'super') {
-            // ゲストはplayer2.meter、ホストはplayer1.meterが99.5以上あるかチェック
             if ((Number(myFighter.meter) || 0) < 99.5 || (myFighter.infectionTimer || 0) > 0) {
                 sfx.block();
                 return;
@@ -13533,7 +13626,7 @@ function initAll30CharsPatch() {
     }
 
     // =========================================================================
-    // 4. オンラインロビー画面・1枠専用キャラ選択レイアウト・切断UIの構築
+    // 4. オンラインロビー画面（ホストのみルール選択）＆キャラ設定画面のルール明記UI
     // =========================================================================
     function setOpponentSelectBoxVisibility(hideOpponentBox) {
         var p2Sample = document.getElementById('p2-card-ryuji');
@@ -13549,6 +13642,7 @@ function initAll30CharsPatch() {
 
     function injectOnlineUI() {
         bindOnlinePadEvents();
+        enforceAlleyStageAndRockBgm(false);
 
         var vsBtn = document.querySelector('button[onclick="openMode(\'vs\')"]');
         if (vsBtn && !document.getElementById('btn-open-online-mode')) {
@@ -13563,25 +13657,33 @@ function initAll30CharsPatch() {
                 '<div class="bg-zinc-950/90 group-hover:bg-zinc-900/75 rounded-[14px] p-2.5 sm:p-3 h-full flex flex-col items-center justify-center text-center transition-all">' +
                     '<div class="text-lg sm:text-2xl mb-0.5">🌐</div>' +
                     '<div class="font-black text-xs sm:text-sm text-emerald-300 tracking-wider">オンライン対戦</div>' +
-                    '<div class="text-[9px] text-zinc-300 mt-0.5">6桁部屋・強化有無選択</div>' +
+                    '<div class="text-[9px] text-zinc-300 mt-0.5">6桁部屋・ホスト強化設定</div>' +
                 '</div>';
             parentGrid.appendChild(onBtn);
         }
 
+        // ★キャラ選択画面の上部バー：ホストには「切り替えボタン」を表示し、ゲストには「ホストが設定中のルール（強化あり/なし）」を大きく明記！
         var selectScreen = document.getElementById('char-select-screen');
         if (selectScreen && !document.getElementById('online-select-bar')) {
             var bar = document.createElement('div');
             bar.id = 'online-select-bar';
-            bar.className = "hidden w-full max-w-4xl mx-auto mt-0.5 px-2.5 py-1 rounded-xl bg-emerald-950/95 border border-emerald-400 flex flex-wrap items-center justify-between gap-1.5 text-xs flex-shrink-0 shadow";
+            bar.className = "hidden w-full max-w-4xl mx-auto mt-0.5 px-3 py-1.5 rounded-xl bg-zinc-950/95 border-2 border-emerald-400 flex flex-col gap-1 text-xs flex-shrink-0 shadow-lg";
             bar.innerHTML =
-                '<div class="flex items-center gap-1.5 flex-wrap">' +
-                    '<span class="px-1.5 py-0.5 rounded bg-emerald-500 text-black font-black text-[10px]">🌐ONLINE</span>' +
-                    '<span id="online-bar-role-room" class="font-black text-white text-[11px]">ROOM: ------</span>' +
-                    '<button type="button" id="online-bar-rule-btn" onclick="toggleOnlineUpgradeRule()" class="px-2 py-0.5 rounded border border-amber-400 bg-amber-950/80 text-amber-200 font-black text-[10px] cursor-pointer">⚖️ 強化なし</button>' +
+                '<div class="flex flex-wrap items-center justify-between gap-1.5">' +
+                    '<div class="flex items-center gap-1.5 flex-wrap">' +
+                        '<span class="px-1.5 py-0.5 rounded bg-emerald-500 text-black font-black text-[10px]">🌐ONLINE</span>' +
+                        '<span id="online-bar-role-room" class="font-black text-white text-[11px]">ROOM: ------</span>' +
+                        '<span class="px-2 py-0.5 rounded bg-zinc-800 border border-zinc-600 text-[10px] text-zinc-300 font-bold">🧱路地裏 / ♪1ロック固定</span>' +
+                    '</div>' +
+                    '<div class="flex items-center gap-2">' +
+                        '<span id="online-bar-peer-status" class="text-[10px] text-emerald-200 font-bold">相手: 選択中</span>' +
+                        '<button type="button" onclick="disconnectOnlineAndExit()" class="px-2.5 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-black text-[10px] shadow cursor-pointer">🔌 切断して退出</button>' +
+                    '</div>' +
                 '</div>' +
-                '<div class="flex items-center gap-1.5">' +
-                    '<span id="online-bar-peer-status" class="text-[10px] text-emerald-200 font-bold">相手: 選択中</span>' +
-                    '<button type="button" onclick="disconnectOnlineAndExit()" class="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-black text-[10px] shadow cursor-pointer">🔌 切断</button>' +
+                '<!-- ホスト用ルール切替UI ＆ ゲスト用ホスト設定ルール明記バナー -->' +
+                '<div class="flex items-center justify-between gap-2 pt-1 border-t border-zinc-800">' +
+                    '<div id="online-rule-guest-notice" class="w-full py-1 px-2.5 rounded-lg text-center font-black text-[11px] sm:text-xs"></div>' +
+                    '<button type="button" id="online-bar-rule-btn" onclick="toggleOnlineUpgradeRule()" class="hidden w-full py-1 px-3 rounded-lg font-black text-[11px] sm:text-xs cursor-pointer transition-all shadow"></button>' +
                 '</div>';
             selectScreen.insertBefore(bar, selectScreen.children[1]);
         }
@@ -13596,58 +13698,65 @@ function initAll30CharsPatch() {
             document.body.appendChild(discBtn);
         }
 
-        if (!document.getElementById('online-lobby-modal')) {
-            var modal = document.createElement('div');
-            modal.id = 'online-lobby-modal';
-            modal.className = "hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3";
-            modal.innerHTML =
-                '<div class="bg-zinc-900 border-2 border-emerald-400 rounded-2xl max-w-md w-full p-4 shadow-2xl text-white flex flex-col gap-3 max-h-[92vh] overflow-y-auto">' +
-                    '<div class="flex items-center justify-between border-b border-zinc-700 pb-2">' +
-                        '<div class="flex items-center gap-1.5">' +
-                            '<span class="text-xl">🌐</span>' +
-                            '<h2 class="text-sm sm:text-base font-black text-emerald-300">オンライン通信対戦（P2P暗号化）</h2>' +
-                        '</div>' +
-                        '<button type="button" onclick="disconnectOnlineAndExit()" class="px-2.5 py-1 rounded-lg bg-rose-700 hover:bg-rose-600 text-[11px] font-black text-white cursor-pointer">🔌 切断 / 閉じる</button>' +
-                    '</div>' +
+        // ★オンラインロビーモーダル：強化あり/なしの選択ボタンを「🏠 部屋を作る（1Pホスト）」の枠内に配置し、ホストだけが選択する設計に統一
+        var existingLobby = document.getElementById('online-lobby-modal');
+        if (existingLobby) existingLobby.remove();
 
-                    '<div class="p-2.5 rounded-xl bg-zinc-950 border border-zinc-700">' +
-                        '<div class="text-[11px] font-bold text-zinc-300 mb-1.5">① 対戦ルールの選択（1Pホストが設定・切替可）</div>' +
+        var modal = document.createElement('div');
+        modal.id = 'online-lobby-modal';
+        modal.className = "hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3";
+        modal.innerHTML =
+            '<div class="bg-zinc-900 border-2 border-emerald-400 rounded-2xl max-w-md w-full p-4 shadow-2xl text-white flex flex-col gap-3 max-h-[92vh] overflow-y-auto">' +
+                '<div class="flex items-center justify-between border-b border-zinc-700 pb-2">' +
+                    '<div class="flex items-center gap-1.5">' +
+                        '<span class="text-xl">🌐</span>' +
+                        '<h2 class="text-sm sm:text-base font-black text-emerald-300">オンライン通信対戦（P2P暗号化）</h2>' +
+                    '</div>' +
+                    '<button type="button" onclick="disconnectOnlineAndExit()" class="px-2.5 py-1 rounded-lg bg-rose-700 hover:bg-rose-600 text-[11px] font-black text-white cursor-pointer">🔌 切断 / 閉じる</button>' +
+                '</div>' +
+
+                '<!-- 1P ホスト専用：ルール選択＋部屋作成 -->' +
+                '<div class="p-3 rounded-xl bg-zinc-950 border-2 border-emerald-500/70 flex flex-col gap-2.5">' +
+                    '<div class="flex items-center justify-between">' +
+                        '<span class="text-xs sm:text-sm font-black text-emerald-300">🏠 部屋を作る（1Pホスト・左側）</span>' +
+                        '<span class="px-2 py-0.5 rounded bg-emerald-950 border border-emerald-500/60 text-[10px] font-bold text-emerald-200">ホストがルール決定</span>' +
+                    '</div>' +
+                    '<div class="p-2 rounded-xl bg-zinc-900/90 border border-zinc-700">' +
+                        '<div class="text-[10px] font-bold text-zinc-300 mb-1.5">👑 ホスト専用：強化ステータスの反映設定（キャラ選択画面でも変更可）</div>' +
                         '<div class="grid grid-cols-2 gap-1.5">' +
-                            '<button type="button" id="lobby-rule-fair" onclick="setOnlineUpgradeRule(false)" class="py-2 px-2 rounded-xl font-black text-xs border-2 border-emerald-400 bg-emerald-950/80 text-emerald-200 cursor-pointer">' +
-                                '⚖️ 強化なし<div class="text-[9px] font-normal text-zinc-300 mt-0.5">標準ステータスで公平対戦</div>' +
+                            '<button type="button" id="lobby-rule-fair" onclick="setOnlineUpgradeRule(false)" class="py-1.5 px-2 rounded-xl font-black text-xs border-2 border-emerald-400 bg-emerald-950/80 text-emerald-200 cursor-pointer">' +
+                                '⚖️ 強化反映なし<div class="text-[9px] font-normal text-zinc-300 mt-0.5">標準ステータスで公平対戦</div>' +
                             '</button>' +
-                            '<button type="button" id="lobby-rule-upg" onclick="setOnlineUpgradeRule(true)" class="py-2 px-2 rounded-xl font-bold text-xs border-2 border-zinc-700 bg-zinc-900 text-zinc-400 cursor-pointer">' +
-                                '🔥 強化あり<div class="text-[9px] font-normal text-zinc-400 mt-0.5">各自の育成Lv＆オーラ反映</div>' +
+                            '<button type="button" id="lobby-rule-upg" onclick="setOnlineUpgradeRule(true)" class="py-1.5 px-2 rounded-xl font-bold text-xs border-2 border-zinc-700 bg-zinc-900 text-zinc-400 cursor-pointer">' +
+                                '🔥 強化反映あり<div class="text-[9px] font-normal text-zinc-400 mt-0.5">各自の育成Lv＆オーラ有効</div>' +
                             '</button>' +
                         '</div>' +
                     '</div>' +
-
-                    '<div class="p-3 rounded-xl bg-zinc-950 border border-emerald-500/60 flex flex-col gap-2">' +
-                        '<div class="flex items-center justify-between">' +
-                            '<span class="text-xs font-black text-emerald-300">🏠 部屋を作る（あなたが 1P・左キャラ操作）</span>' +
-                            '<button type="button" onclick="createOnlineRoom()" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black text-xs shadow hover:brightness-110 cursor-pointer active:scale-95">🎲 6桁ルーム番号を発行</button>' +
-                        '</div>' +
-                        '<div id="host-room-box" class="hidden p-2.5 rounded-xl bg-zinc-900 border border-emerald-400/80 text-center">' +
-                            '<div class="text-[10px] text-zinc-400">友人に以下の6桁ルーム番号を伝えてください</div>' +
-                            '<div class="flex items-center justify-center gap-2 mt-1">' +
-                                '<span id="host-room-code-display" class="text-2xl font-black tracking-[0.25em] text-amber-300 font-mono">------</span>' +
-                                '<button type="button" onclick="copyOnlineRoomCode()" class="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-[10px] font-bold text-sky-300 cursor-pointer">📋 コピー</button>' +
-                            '</div>' +
+                    '<button type="button" onclick="createOnlineRoom()" class="w-full py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black text-xs sm:text-sm shadow hover:brightness-110 cursor-pointer active:scale-95">🎲 このルールで6桁ルーム番号を発行</button>' +
+                    '<div id="host-room-box" class="hidden p-2.5 rounded-xl bg-zinc-900 border border-emerald-400/80 text-center">' +
+                        '<div class="text-[10px] text-zinc-400">友人に以下の6桁ルーム番号を伝えてください</div>' +
+                        '<div class="flex items-center justify-center gap-2 mt-1">' +
+                            '<span id="host-room-code-display" class="text-2xl font-black tracking-[0.25em] text-amber-300 font-mono">------</span>' +
+                            '<button type="button" onclick="copyOnlineRoomCode()" class="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-[10px] font-bold text-sky-300 cursor-pointer">📋 コピー</button>' +
                         '</div>' +
                     '</div>' +
+                '</div>' +
 
-                    '<div class="p-3 rounded-xl bg-zinc-950 border border-sky-500/60 flex flex-col gap-2">' +
-                        '<span class="text-xs font-black text-sky-300">🚀 部屋に入る（あなたが 2P・右キャラ操作）</span>' +
-                        '<div class="flex items-center gap-2">' +
-                            '<input type="tel" id="guest-room-input" maxlength="6" placeholder="6桁の番号を入力" oninput="this.value = this.value.replace(/[^0-9]/g, \'\').slice(0, 6)" class="w-full px-3 py-2 rounded-xl bg-zinc-900 border-2 border-zinc-700 focus:border-sky-400 text-center text-lg font-black tracking-[0.2em] text-white outline-none font-mono" />' +
-                            '<button type="button" onclick="joinOnlineRoom()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-500 text-white font-black text-xs whitespace-nowrap shadow hover:brightness-110 cursor-pointer active:scale-95">接続する</button>' +
-                        '</div>' +
+                '<!-- 2P ゲスト専用：部屋に入る（ルール選択なし・ホスト設定が入室後に明記される） -->' +
+                '<div class="p-3 rounded-xl bg-zinc-950 border-2 border-sky-500/60 flex flex-col gap-2">' +
+                    '<div class="flex items-center justify-between">' +
+                        '<span class="text-xs sm:text-sm font-black text-sky-300">🚀 部屋に入る（2Pゲスト・右側）</span>' +
+                        '<span class="text-[10px] text-zinc-400">※ルールはホストの設定が反映されます</span>' +
                     '</div>' +
+                    '<div class="flex items-center gap-2">' +
+                        '<input type="tel" id="guest-room-input" maxlength="6" placeholder="6桁の番号を入力" oninput="this.value = this.value.replace(/[^0-9]/g, \'\').slice(0, 6)" class="w-full px-3 py-2 rounded-xl bg-zinc-900 border-2 border-zinc-700 focus:border-sky-400 text-center text-lg font-black tracking-[0.2em] text-white outline-none font-mono" />' +
+                        '<button type="button" onclick="joinOnlineRoom()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-500 text-white font-black text-xs whitespace-nowrap shadow hover:brightness-110 cursor-pointer active:scale-95">接続する</button>' +
+                    '</div>' +
+                '</div>' +
 
-                    '<div id="online-lobby-status" class="text-center text-xs font-bold text-amber-300 min-h-[20px]">「部屋を作る」または「6桁番号を入力して接続」してください</div>' +
-                '</div>';
-            document.body.appendChild(modal);
-        }
+                '<div id="online-lobby-status" class="text-center text-xs font-bold text-amber-300 min-h-[20px]">「部屋を作る」または「6桁番号を入力して接続」してください</div>' +
+            '</div>';
+        document.body.appendChild(modal);
     }
 
     function setLobbyStatusText(text, colorCls) {
@@ -13658,43 +13767,64 @@ function initAll30CharsPatch() {
     }
 
     window.setOnlineUpgradeRule = function(useUpg) {
+        if (isOnlineMode && onlineConnected && onlineRole !== 'host') {
+            return; // 接続中はホストのみ変更可能
+        }
         sfx.init(); sfx.block();
         onlineUseUpgrades = !!useUpg;
         updateOnlineRuleButtonsUI();
         if (onlineConnected && onlineRole === 'host') {
             sendOnlinePacket({ type: 'rule_sync', useUpgrades: onlineUseUpgrades });
+            refreshCharacterCardsUI();
             syncSelectPreviewFighters();
         }
     };
 
     window.toggleOnlineUpgradeRule = function() {
-        if (onlineRole !== 'host') {
-            sfx.init(); sfx.hitLight();
-            return;
-        }
+        if (onlineRole !== 'host') return;
         window.setOnlineUpgradeRule(!onlineUseUpgrades);
     };
 
+    // ★ホスト用切り替えボタンと、ゲスト用の「ホスト設定ルール表示バナー」を更新する関数
     function updateOnlineRuleButtonsUI() {
         var fairBtn = document.getElementById('lobby-rule-fair');
         var upgBtn  = document.getElementById('lobby-rule-upg');
         if (fairBtn && upgBtn) {
             if (!onlineUseUpgrades) {
-                fairBtn.className = 'py-2 px-2 rounded-xl font-black text-xs border-2 border-emerald-400 bg-emerald-950/80 text-emerald-200 cursor-pointer';
-                upgBtn.className  = 'py-2 px-2 rounded-xl font-bold text-xs border-2 border-zinc-700 bg-zinc-900 text-zinc-400 cursor-pointer';
+                fairBtn.className = 'py-1.5 px-2 rounded-xl font-black text-xs border-2 border-emerald-400 bg-emerald-950/80 text-emerald-200 cursor-pointer';
+                upgBtn.className  = 'py-1.5 px-2 rounded-xl font-bold text-xs border-2 border-zinc-700 bg-zinc-900 text-zinc-400 cursor-pointer';
             } else {
-                fairBtn.className = 'py-2 px-2 rounded-xl font-bold text-xs border-2 border-zinc-700 bg-zinc-900 text-zinc-400 cursor-pointer';
-                upgBtn.className  = 'py-2 px-2 rounded-xl font-black text-xs border-2 border-amber-400 bg-amber-950/80 text-amber-200 cursor-pointer';
+                fairBtn.className = 'py-1.5 px-2 rounded-xl font-bold text-xs border-2 border-zinc-700 bg-zinc-900 text-zinc-400 cursor-pointer';
+                upgBtn.className  = 'py-1.5 px-2 rounded-xl font-black text-xs border-2 border-amber-400 bg-amber-950/80 text-amber-200 cursor-pointer';
             }
         }
+
         var barRuleBtn = document.getElementById('online-bar-rule-btn');
-        if (barRuleBtn) {
-            barRuleBtn.textContent = onlineUseUpgrades
-                ? '🔥 強化あり(Lv/オーラ有効)' + (onlineRole === 'host' ? ' [変更]' : '')
-                : '⚖️ 強化なし(標準・公平)' + (onlineRole === 'host' ? ' [変更]' : '');
-            barRuleBtn.className = onlineUseUpgrades
-                ? 'px-2 py-0.5 rounded border border-amber-400 bg-amber-950/90 text-amber-200 font-black text-[10px] cursor-pointer'
-                : 'px-2 py-0.5 rounded border border-sky-400 bg-sky-950/90 text-sky-200 font-black text-[10px] cursor-pointer';
+        var guestNotice = document.getElementById('online-rule-guest-notice');
+        if (!barRuleBtn || !guestNotice) return;
+
+        if (onlineRole === 'host') {
+            // ホスト画面：クリックして強化反映あり/なしを切り替えられるボタンを表示
+            guestNotice.classList.add('hidden');
+            barRuleBtn.classList.remove('hidden');
+            if (onlineUseUpgrades) {
+                barRuleBtn.textContent = '👑 ホスト設定中：【🔥 強化反映あり（育成Lv＆オーラ有効）】 ➔ タップで「強化なし」へ切替';
+                barRuleBtn.className = 'w-full py-1 px-3 rounded-lg border-2 border-amber-400 bg-amber-950/90 hover:bg-amber-900 text-amber-200 font-black text-[11px] sm:text-xs cursor-pointer shadow';
+            } else {
+                barRuleBtn.textContent = '👑 ホスト設定中：【⚖️ 強化反映なし（標準ステータス・公平対戦）】 ➔ タップで「強化あり」へ切替';
+                barRuleBtn.className = 'w-full py-1 px-3 rounded-lg border-2 border-sky-400 bg-sky-950/90 hover:bg-sky-900 text-sky-200 font-black text-[11px] sm:text-xs cursor-pointer shadow';
+            }
+        } else {
+            // ゲスト画面：切り替えボタンは出さず、ホストが選択しているルールを大きくはっきり記載
+            barRuleBtn.classList.add('hidden');
+            guestNotice.classList.remove('hidden');
+            if (onlineUseUpgrades) {
+                guestNotice.textContent = '📢 ホスト設定ルール：【🔥 強化反映あり（お互いの道場強化Lv＆闘気オーラが反映されます）】';
+                guestNotice.className = 'w-full py-1 px-2.5 rounded-lg border-2 border-amber-400 bg-amber-950/90 text-amber-200 text-center font-black text-[11px] sm:text-xs shadow';
+            } else {
+                guestNotice.textContent = '📢 ホスト設定ルール：【⚖️ 強化反映なし（強化は無効・標準ステータスでの公平対戦です）】';
+                guestNotice.className = 'w-full py-1 px-2.5 rounded-lg border-2 border-sky-400 bg-sky-950/90 text-sky-200 text-center font-black text-[11px] sm:text-xs shadow';
+            }
         }
     }
 
@@ -13713,6 +13843,12 @@ function initAll30CharsPatch() {
         }
     };
 
+    function clearLaunchRetryTimers() {
+        while (launchRetryTimers.length > 0) {
+            clearTimeout(launchRetryTimers.pop());
+        }
+    }
+
     function stopSelectHeartbeat() {
         if (selectSyncInterval) {
             clearInterval(selectSyncInterval);
@@ -13723,15 +13859,16 @@ function initAll30CharsPatch() {
     function startSelectHeartbeat() {
         stopSelectHeartbeat();
         selectSyncInterval = setInterval(function() {
-            if (isOnlineMode && onlineConnected && gameState === 'select' && !isLaunchingMatch) {
+            if (isOnlineMode && onlineConnected && gameState !== 'playing' && !isLaunchingMatch) {
                 sendOnlinePacket(getMyCharPacket('char_select', myReadyState));
                 checkAndTriggerBothReadyLaunch();
             }
-        }, 350);
+        }, 300);
     }
 
     function cleanupPeerConnection() {
         stopSelectHeartbeat();
+        clearLaunchRetryTimers();
         onlineConnected = false;
         isOnlineMode = false;
         onlineRole = null;
@@ -13771,7 +13908,7 @@ function initAll30CharsPatch() {
     };
 
     // =========================================================================
-    // 5. PeerJS ルーム作成（1Pホスト）＆ 入室（2Pゲスト）＆ 両者READY確認処理
+    // 5. PeerJS ルーム作成（1Pホスト）＆ 入室（2Pゲスト）＆ 両者スタート100%同期処理
     // =========================================================================
     window.createOnlineRoom = function() {
         sfx.init(); sfx.superFlash();
@@ -13861,12 +13998,13 @@ function initAll30CharsPatch() {
     }
 
     function checkAndTriggerBothReadyLaunch() {
-        if (!isOnlineMode || !onlineConnected || gameState !== 'select' || isLaunchingMatch) return;
+        if (!isOnlineMode || !onlineConnected || gameState === 'playing' || isLaunchingMatch) return;
         if (myReadyState && remoteReadyState) {
             isLaunchingMatch = true;
-            if (onlineRole === 'host') {
-                sendOnlinePacket(getMyCharPacket('launch_match', true));
-            }
+            var launchPkt = getMyCharPacket('launch_match', true);
+            sendOnlinePacket(launchPkt);
+            launchRetryTimers.push(setTimeout(function() { sendOnlinePacket(launchPkt); }, 120));
+            launchRetryTimers.push(setTimeout(function() { sendOnlinePacket(launchPkt); }, 300));
             executeOnlineMatchStart();
         }
     }
@@ -13889,6 +14027,7 @@ function initAll30CharsPatch() {
         openMode('vs');
         isOnlineMode = true;
         setOpponentSelectBoxVisibility(true);
+        enforceAlleyStageAndRockBgm(true);
 
         if (onlineRole === 'host') {
             selectedP1Id = myOnlineCharId;
@@ -13928,12 +14067,14 @@ function initAll30CharsPatch() {
 
                 if (pkt.type === 'hello' || pkt.type === 'char_select' || pkt.type === 'ready_sync') {
                     var charChanged = (remotePeerCharId !== pkt.charId);
+                    var ruleChanged = (onlineRole === 'guest' && onlineUseUpgrades !== pkt.useUpgrades);
                     remotePeerCharId = pkt.charId;
                     remotePeerUpgrades = pkt.upgrades;
                     remotePeerAuraId = pkt.auraId;
                     remoteReadyState = !!pkt.ready;
 
-                    if (onlineRole === 'guest' && pkt.type === 'hello') {
+                    // ★ゲスト側は常にホストから送られてくる最新の強化反映設定（useUpgrades）に同期する！
+                    if (onlineRole === 'guest') {
                         onlineUseUpgrades = pkt.useUpgrades;
                     }
                     if (onlineRole === 'host') {
@@ -13945,7 +14086,7 @@ function initAll30CharsPatch() {
                     }
                     updateOnlineRuleButtonsUI();
                     refreshCharacterCardsUI();
-                    if (charChanged && gameState === 'select') {
+                    if ((charChanged || ruleChanged) && gameState !== 'playing') {
                         syncSelectPreviewFighters();
                     }
                     checkAndTriggerBothReadyLaunch();
@@ -13953,18 +14094,19 @@ function initAll30CharsPatch() {
                     if (onlineRole === 'guest') {
                         onlineUseUpgrades = pkt.useUpgrades;
                         updateOnlineRuleButtonsUI();
+                        refreshCharacterCardsUI();
                         syncSelectPreviewFighters();
                     }
                 } else if (pkt.type === 'launch_match') {
-                    if (gameState === 'select' && !isLaunchingMatch) {
+                    if (gameState !== 'playing' && !isLaunchingMatch) {
                         isLaunchingMatch = true;
                         remotePeerCharId = pkt.charId;
                         remotePeerUpgrades = pkt.upgrades;
                         remotePeerAuraId = pkt.auraId;
                         if (onlineRole === 'guest') {
                             onlineUseUpgrades = pkt.useUpgrades;
-                            selectedP1Id = pkt.p1CharId;
-                            selectedP2Id = pkt.p2CharId;
+                            selectedP1Id = remotePeerCharId;
+                            selectedP2Id = myOnlineCharId;
                         } else {
                             selectedP1Id = myOnlineCharId;
                             selectedP2Id = remotePeerCharId;
@@ -14041,6 +14183,7 @@ function initAll30CharsPatch() {
                     myReadyState = false;
                     remoteReadyState = false;
                     isLaunchingMatch = false;
+                    clearLaunchRetryTimers();
                     if (gameState === 'match_over' || gameState === 'round_end' || gameState === 'playing') {
                         backToSelect();
                     }
@@ -14071,6 +14214,7 @@ function initAll30CharsPatch() {
             syncMoveLabelDictionaryForRole();
         }
         origOpenModeForOnline(mode);
+        enforceAlleyStageAndRockBgm(true);
     };
 
     var origSelectP1ForOnline = window.selectP1;
@@ -14084,6 +14228,7 @@ function initAll30CharsPatch() {
             playCharSelectVoice(charId);
             myOnlineCharId = charId;
             myReadyState = false;
+            isLaunchingMatch = false;
             if (onlineRole === 'host') {
                 selectedP1Id = myOnlineCharId;
                 selectedP2Id = remotePeerCharId;
@@ -14136,6 +14281,8 @@ function initAll30CharsPatch() {
     var prevRefreshCardsOnline = refreshCharacterCardsUI;
     refreshCharacterCardsUI = function() {
         prevRefreshCardsOnline();
+        enforceAlleyStageAndRockBgm(false);
+
         var onBar = document.getElementById('online-select-bar');
         var fightBtn = document.querySelector('button[onclick="startGame()"]');
 
@@ -14143,11 +14290,22 @@ function initAll30CharsPatch() {
             setOpponentSelectBoxVisibility(true);
             syncMoveLabelDictionaryForRole();
 
+            // キャラ選択画面の最上部サブタイトルにもホストのルール設定を明記
+            var subEl = document.getElementById('select-mode-subtitle');
+            if (subEl) {
+                subEl.textContent = onlineUseUpgrades
+                    ? '🔥【ホスト設定：強化反映あり】お互いの道場強化Lv＆闘気オーラが反映されます！'
+                    : '⚖️【ホスト設定：強化反映なし】道場の強化レベルは反映されず、全キャラ標準ステータスで戦います！';
+                subEl.className = onlineUseUpgrades
+                    ? 'text-[10px] sm:text-xs text-amber-300 font-black'
+                    : 'text-[10px] sm:text-xs text-sky-300 font-bold';
+            }
+
             if (onBar) {
                 onBar.classList.remove('hidden');
                 var roleRoomEl = document.getElementById('online-bar-role-room');
                 if (roleRoomEl) {
-                    roleRoomEl.textContent = (onlineRole === 'host' ? '👑あなたは1P(左)' : '⚡あなたは2P(右)') + ' [ROOM:' + onlineRoomCode + ']';
+                    roleRoomEl.textContent = (onlineRole === 'host' ? '👑あなたは1Pホスト(左)' : '⚡あなたは2Pゲスト(右)') + ' [ROOM:' + onlineRoomCode + ']';
                 }
                 var peerStEl = document.getElementById('online-bar-peer-status');
                 if (peerStEl) {
@@ -14237,8 +14395,11 @@ function initAll30CharsPatch() {
             if (statComp) {
                 var s1 = computeFighterCombatStats(selectedP1Id, true);
                 var s2 = computeFighterCombatStats(selectedP2Id, false);
-                var ruleLabel = onlineUseUpgrades ? '🔥強化あり' : '⚖️強化なし(公平)';
+                var ruleLabel = onlineUseUpgrades ? '🔥ホスト設定：強化反映あり' : '⚖️ホスト設定：強化反映なし(公平)';
                 statComp.textContent = ruleLabel + ' ｜ 1P(HP:' + s1.maxHp + '/攻撃' + Math.round(s1.atkMult * 100) + '%) vs 2P(HP:' + s2.maxHp + '/攻撃' + Math.round(s2.atkMult * 100) + '%)';
+                statComp.className = onlineUseUpgrades
+                    ? 'text-[11px] sm:text-xs font-black text-amber-300 mt-0.5'
+                    : 'text-[11px] sm:text-xs font-bold text-sky-300 mt-0.5';
             }
             enforceMyControlPanelDOM();
         }
@@ -14246,6 +14407,8 @@ function initAll30CharsPatch() {
 
     function executeOnlineMatchStart() {
         bindOnlinePadEvents();
+        enforceAlleyStageAndRockBgm(true);
+
         var discBtn = document.getElementById('btn-online-battle-disconnect');
         if (discBtn) discBtn.classList.remove('hidden');
 
@@ -14261,7 +14424,6 @@ function initAll30CharsPatch() {
             selectedP2Id = myOnlineCharId;
         }
 
-        // ★試合中は常時 CHAR_MOVE_BUTTON_LABELS を自分の操作キャラの技名に固定（finallyで戻さない！）
         syncMoveLabelDictionaryForRole();
 
         var savedV1 = vsUnlocked[selectedP1Id];
@@ -14309,6 +14471,7 @@ function initAll30CharsPatch() {
 
     var origStartGameOnlineHook = window.startGame;
     window.startGame = function() {
+        enforceAlleyStageAndRockBgm(true);
         if (isOnlineMode && onlineConnected) {
             sfx.init();
             myReadyState = !myReadyState;
@@ -14636,20 +14799,23 @@ function initAll30CharsPatch() {
         myReadyState = false;
         remoteReadyState = false;
         isLaunchingMatch = false;
+        clearLaunchRetryTimers();
         if (isOnlineMode && onlineConnected) {
             sendOnlinePacket({ type: 'rematch' });
             startSelectHeartbeat();
         }
         prevBackToSelectOnline();
+        enforceAlleyStageAndRockBgm(true);
     };
 
-    function initOnlineVsPatchV9() {
+    function initOnlineVsPatchV11() {
         backupOriginalMoveLabels();
         injectOnlineUI();
+        enforceAlleyStageAndRockBgm(true);
     }
 
-    initOnlineVsPatchV9();
-    window.addEventListener('DOMContentLoaded', initOnlineVsPatchV9);
+    initOnlineVsPatchV11();
+    window.addEventListener('DOMContentLoaded', initOnlineVsPatchV11);
 })();
 </script>
 </body>
