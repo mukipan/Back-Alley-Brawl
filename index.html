@@ -12993,12 +12993,12 @@ function initAll30CharsPatch() {
     window.addEventListener('DOMContentLoaded', initAll30CharsPatch);
 })();
 </script>
-<!-- ==================== 🌐 PeerJS オンライン通信対戦拡張パッチ（V8完全版：ゲスト技パネル同期・2P超必殺100%発動・ROUND表示修正） ==================== -->
+<!-- ==================== 🌐 PeerJS オンライン通信対戦拡張パッチ（V9完全決定版：ゲスト技パネル完全固定＆2P超必殺100%確実発動） ==================== -->
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (function() {
-    if (window.__ONLINE_VS_PATCH_V8_LOADED__) return;
-    window.__ONLINE_VS_PATCH_V8_LOADED__ = true;
+    if (window.__ONLINE_VS_PATCH_V9_LOADED__) return;
+    window.__ONLINE_VS_PATCH_V9_LOADED__ = true;
 
     if (typeof window.Peer === 'undefined') {
         var fallbackScript = document.createElement('script');
@@ -13040,6 +13040,56 @@ function initAll30CharsPatch() {
     var isExecutingRemoteAttack = false;
     var isReroutingGuestAttack = false;
     var isApplyingRemoteRoundEnd = false;
+
+    // ★全30キャラの本来の技ボタンラベル辞書をバックアップ保存
+    var SAVED_CHAR_MOVE_LABELS = {};
+    function backupOriginalMoveLabels() {
+        if (typeof CHAR_MOVE_BUTTON_LABELS === 'undefined') return;
+        ALL_CHAR_IDS.forEach(function(id) {
+            if (CHAR_MOVE_BUTTON_LABELS[id] && !SAVED_CHAR_MOVE_LABELS[id]) {
+                SAVED_CHAR_MOVE_LABELS[id] = {
+                    light:   CHAR_MOVE_BUTTON_LABELS[id].light,
+                    heavy:   CHAR_MOVE_BUTTON_LABELS[id].heavy,
+                    special: CHAR_MOVE_BUTTON_LABELS[id].special
+                };
+            }
+        });
+    }
+    backupOriginalMoveLabels();
+
+    // ★ゲスト側の時は、本体コードがどのキャラIDで技名を引いても必ず「自分が選んだキャラの技名」が返るように辞書自体を同期！
+    function syncMoveLabelDictionaryForRole() {
+        backupOriginalMoveLabels();
+        if (typeof CHAR_MOVE_BUTTON_LABELS === 'undefined') return;
+        if (isOnlineMode && onlineConnected) {
+            var myId = ALL_CHAR_IDS.includes(myOnlineCharId) ? myOnlineCharId : 'ryuji';
+            if (onlineRole === 'guest' && player2 && ALL_CHAR_IDS.includes(player2.id)) {
+                myId = player2.id;
+            } else if (onlineRole === 'host' && player1 && ALL_CHAR_IDS.includes(player1.id)) {
+                myId = player1.id;
+            }
+            var myLabels = SAVED_CHAR_MOVE_LABELS[myId];
+            if (myLabels) {
+                ALL_CHAR_IDS.forEach(function(id) {
+                    CHAR_MOVE_BUTTON_LABELS[id] = {
+                        light:   myLabels.light,
+                        heavy:   myLabels.heavy,
+                        special: myLabels.special
+                    };
+                });
+            }
+        } else {
+            ALL_CHAR_IDS.forEach(function(id) {
+                if (SAVED_CHAR_MOVE_LABELS[id]) {
+                    CHAR_MOVE_BUTTON_LABELS[id] = {
+                        light:   SAVED_CHAR_MOVE_LABELS[id].light,
+                        heavy:   SAVED_CHAR_MOVE_LABELS[id].heavy,
+                        special: SAVED_CHAR_MOVE_LABELS[id].special
+                    };
+                }
+            });
+        }
+    }
 
     // =========================================================================
     // 1. 厳格な数値・ホワイトリスト安全フィルター
@@ -13186,87 +13236,132 @@ function initAll30CharsPatch() {
     }
 
     // =========================================================================
-    // 2. 自分の操作キャラ（1Pホストは左、2Pゲストは右）の技パネル＆HUD表示同期ヘルパー
+    // 2. フレーム完了直後（requestAnimationFrame直後）の操作パネル＆超必殺ゲージ強制同期
     // =========================================================================
-    function syncMyOnlineMovePanelAndHUD() {
+    function enforceMyControlPanelDOM() {
         if (!isOnlineMode || !onlineConnected) return;
+        syncMoveLabelDictionaryForRole();
 
-        // 自分が実際に操作しているファイター（1Pホストならplayer1、2Pゲストならplayer2）
         var myFighter = (onlineRole === 'host') ? player1 : player2;
-        var myCharId = myFighter ? myFighter.id : myOnlineCharId;
+        var myCharId = (myFighter && ALL_CHAR_IDS.includes(myFighter.id)) ? myFighter.id : myOnlineCharId;
+        var myLabels = SAVED_CHAR_MOVE_LABELS[myCharId];
 
-        // 1) 右下操作パネル（弱・強・崩）の技名を自分の操作キャラの技名に強制同期！
-        var labels = (typeof CHAR_MOVE_BUTTON_LABELS !== 'undefined' && CHAR_MOVE_BUTTON_LABELS[myCharId])
-            ? CHAR_MOVE_BUTTON_LABELS[myCharId]
-            : null;
-        if (labels) {
-            var lEl = document.getElementById('move-label-light')   || document.getElementById('btn-light-label');
-            var hEl = document.getElementById('move-label-heavy')   || document.getElementById('btn-heavy-label');
-            var sEl = document.getElementById('move-label-special') || document.getElementById('btn-special-label');
-            if (lEl && labels.light   && lEl.textContent !== labels.light)   lEl.textContent = labels.light;
-            if (hEl && labels.heavy   && hEl.textContent !== labels.heavy)   hEl.textContent = labels.heavy;
-            if (sEl && labels.special && sEl.textContent !== labels.special) sEl.textContent = labels.special;
+        var deck = document.getElementById('controller-deck');
+        if (!deck) return;
 
-            var deck = document.getElementById('controller-deck');
-            if (deck) {
-                var btns = deck.querySelectorAll('.arcade-btn');
-                if (btns.length >= 3) {
-                    var moveKeys = ['light', 'heavy', 'special'];
-                    for (var i = 0; i < 3; i++) {
-                        var spans = btns[i].querySelectorAll('span');
-                        if (spans.length > 0 && labels[moveKeys[i]]) {
-                            var lastSpan = spans[spans.length - 1];
-                            if (lastSpan.textContent !== labels[moveKeys[i]]) {
-                                lastSpan.textContent = labels[moveKeys[i]];
-                            }
-                        }
+        // 4つの技ボタンを取得（.arcade-btn または 右側グリッド内のbutton）
+        var atkBtns = deck.querySelectorAll('.arcade-btn');
+        if (!atkBtns || atkBtns.length < 4) {
+            var rightPanel = deck.lastElementChild;
+            if (rightPanel) atkBtns = rightPanel.querySelectorAll('button');
+        }
+
+        // ① 弱・強・崩の3つのボタンの技名テキストを自分の操作キャラの技名に確定上書き
+        if (myLabels && atkBtns && atkBtns.length >= 3) {
+            var mKeys = ['light', 'heavy', 'special'];
+            for (var i = 0; i < 3; i++) {
+                var wantedText = myLabels[mKeys[i]];
+                if (!wantedText) continue;
+                var btn = atkBtns[i];
+                var children = btn.querySelectorAll('span, div');
+                if (children.length > 0) {
+                    var targetNode = children[children.length - 1];
+                    if (targetNode.textContent !== wantedText) {
+                        targetNode.textContent = wantedText;
                     }
                 }
             }
         }
 
-        // 2) 右下の「🔥超必殺」ボタンの％表示と100%発光エフェクトを自分の操作キャラのゲージに完全同期！
-        if (myFighter) {
-            var superBtn = document.getElementById('btn-super');
-            if (superBtn) {
-                var pct = Math.floor(Math.max(0, Math.min(100, myFighter.meter || 0)));
-                if (pct >= 100 && (myFighter.infectionTimer || 0) <= 0) {
-                    superBtn.classList.add('super-ready');
-                } else {
-                    superBtn.classList.remove('super-ready');
-                }
-                var sSpans = superBtn.querySelectorAll('span');
-                if (sSpans.length > 0) {
-                    var pctSpan = sSpans[sSpans.length - 1];
-                    var wantedTxt = pct >= 100 ? 'MAX 100%!!' : (pct + '%');
-                    if (pctSpan.textContent !== wantedTxt) {
-                        pctSpan.textContent = wantedTxt;
-                    }
-                }
+        // ② 4つ目の「🔥超必殺」ボタンの％表示と100%発光クラスを、自分の操作キャラ（ゲストはplayer2）のmeterに完全同期！
+        var superBtn = document.getElementById('btn-super') || (atkBtns && atkBtns.length >= 4 ? atkBtns[3] : null);
+        if (superBtn && myFighter) {
+            var pct = Math.floor(Math.max(0, Math.min(100, Number(myFighter.meter) || 0)));
+            var canSuper = (pct >= 100 && (myFighter.infectionTimer || 0) <= 0);
+            if (canSuper) {
+                if (!superBtn.classList.contains('super-ready')) superBtn.classList.add('super-ready');
+            } else {
+                if (superBtn.classList.contains('super-ready')) superBtn.classList.remove('super-ready');
             }
-        }
-
-        // 3) 上部HUDの「ROUND undefined」および「CPU:」表記を綺麗に自動補正
-        var calcRound = ((typeof p1RoundWins === 'number' ? p1RoundWins : 0) + (typeof p2RoundWins === 'number' ? p2RoundWins : 0) + 1);
-        if (typeof currentRound === 'undefined' || !Number.isFinite(currentRound)) {
-            try { currentRound = calcRound; } catch (e) {}
-        }
-        var p2Hud = document.getElementById('p2-name');
-        if (p2Hud && p2Hud.textContent.indexOf('CPU:') === 0) {
-            p2Hud.textContent = p2Hud.textContent.replace('CPU:', '2P:');
-        }
-        var roundIds = ['round-info', 'round-display', 'round-label', 'hud-round-text', 'mode-round-label'];
-        for (var r = 0; r < roundIds.length; r++) {
-            var rEl = document.getElementById(roundIds[r]);
-            if (rEl && rEl.textContent.indexOf('undefined') !== -1) {
-                rEl.textContent = rEl.textContent.replace('undefined', String(calcRound));
+            var sNodes = superBtn.querySelectorAll('span, div');
+            if (sNodes.length > 0) {
+                var pctNode = sNodes[sNodes.length - 1];
+                var wantedPctText = pct + '%';
+                if (pctNode.textContent !== wantedPctText) {
+                    pctNode.textContent = wantedPctText;
+                }
             }
         }
     }
 
+    // ★本体コードの gameLoop（update ➔ draw ➔ updateHUD）がすべて終わった直後に毎フレーム必ず実行するフック
+    if (!window.__ONLINE_RAF_HOOKED__) {
+        window.__ONLINE_RAF_HOOKED__ = true;
+        var origRAF = window.requestAnimationFrame;
+        window.requestAnimationFrame = function(callback) {
+            return origRAF.call(window, function(timestamp) {
+                callback(timestamp);
+                if (isOnlineMode && onlineConnected) {
+                    enforceMyControlPanelDOM();
+                }
+            });
+        };
+    }
+
+    // Canvas上の「CPU: ウメ婆」という描画テキストもオンライン時は自動的に「2P: ウメ婆」に変換
+    if (!window.__ONLINE_CANVAS_TEXT_HOOKED__ && typeof CanvasRenderingContext2D !== 'undefined') {
+        window.__ONLINE_CANVAS_TEXT_HOOKED__ = true;
+        var origFillText = CanvasRenderingContext2D.prototype.fillText;
+        CanvasRenderingContext2D.prototype.fillText = function(text, x, y, maxWidth) {
+            if (isOnlineMode && onlineConnected && typeof text === 'string' && text.indexOf('CPU:') !== -1) {
+                text = text.replace('CPU:', '2P:');
+            }
+            if (maxWidth !== undefined) return origFillText.call(this, text, x, y, maxWidth);
+            return origFillText.call(this, text, x, y);
+        };
+        var origStrokeText = CanvasRenderingContext2D.prototype.strokeText;
+        CanvasRenderingContext2D.prototype.strokeText = function(text, x, y, maxWidth) {
+            if (isOnlineMode && onlineConnected && typeof text === 'string' && text.indexOf('CPU:') !== -1) {
+                text = text.replace('CPU:', '2P:');
+            }
+            if (maxWidth !== undefined) return origStrokeText.call(this, text, x, y, maxWidth);
+            return origStrokeText.call(this, text, x, y);
+        };
+    }
+
     // =========================================================================
-    // 3. 十字キー＆4つの技ボタン（弱・強・崩・超必殺）の直接キャプチャ監視システム
+    // 3. 最優先キャプチャ（windowレベル）による4つの技ボタン＆超必殺技100%確実発動システム
     // =========================================================================
+    function detectClickedAttackMoveType(targetEl) {
+        if (!targetEl || !targetEl.closest) return null;
+        var deck = document.getElementById('controller-deck');
+        if (!deck || !deck.contains(targetEl)) return null;
+
+        if (targetEl.closest('#btn-super'))   return 'super';
+        if (targetEl.closest('#btn-special')) return 'special';
+        if (targetEl.closest('#btn-heavy'))   return 'heavy';
+        if (targetEl.closest('#btn-light'))   return 'light';
+
+        var btn = targetEl.closest('.arcade-btn') || targetEl.closest('button');
+        if (!btn) return null;
+        if (btn.id === 'btn-up' || btn.id === 'btn-down' || btn.id === 'btn-left' || btn.id === 'btn-right') return null;
+
+        var atkBtns = deck.querySelectorAll('.arcade-btn');
+        if (!atkBtns || atkBtns.length < 4) {
+            var rightPanel = deck.lastElementChild;
+            if (rightPanel) atkBtns = rightPanel.querySelectorAll('button');
+        }
+        if (atkBtns) {
+            var moveTypes = ['light', 'heavy', 'special', 'super'];
+            for (var i = 0; i < atkBtns.length && i < 4; i++) {
+                if (atkBtns[i] === btn || atkBtns[i].contains(btn)) {
+                    return moveTypes[i];
+                }
+            }
+        }
+        return null;
+    }
+
     function bindOnlinePadEvents() {
         var btnMap = [
             { id: 'btn-left',  key: 'left' },
@@ -13276,8 +13371,8 @@ function initAll30CharsPatch() {
         ];
         btnMap.forEach(function(item) {
             var el = document.getElementById(item.id);
-            if (!el || el.dataset.onlineBoundV8) return;
-            el.dataset.onlineBoundV8 = '1';
+            if (!el || el.dataset.onlineBoundV9) return;
+            el.dataset.onlineBoundV9 = '1';
 
             var setPress = function(val) {
                 myLocalPad[item.key] = val;
@@ -13293,48 +13388,42 @@ function initAll30CharsPatch() {
             el.addEventListener('mouseup', function() { setPress(false); });
         });
 
-        // ★右下の4つの技ボタン（弱・強・崩・超必殺）をキャプチャフェーズで直接捕捉し、
-        // ゲスト側でも本体コードの「player1.meter >= 100」チェックに邪魔されず100%確実に技・超必殺技を発動させる！
-        var deck = document.getElementById('controller-deck');
-        if (deck) {
-            var atkBtns = deck.querySelectorAll('.arcade-btn');
-            var moveTypes = ['light', 'heavy', 'special', 'super'];
-            for (var i = 0; i < atkBtns.length && i < 4; i++) {
-                (function(btnEl, mType) {
-                    if (btnEl.dataset.onlineAtkBoundV8) return;
-                    btnEl.dataset.onlineAtkBoundV8 = '1';
+        // ★windowの最上位キャプチャフェーズで pointerdown / touchstart / mousedown / click を捕捉！
+        // これにより、本体コードの「P1のゲージが100%未満なら超必殺ボタンを弾く処理」よりも前に100%確実に割り込んで発動させる！
+        if (!window.__ONLINE_GLOBAL_ATK_CAPTURE_V9__) {
+            window.__ONLINE_GLOBAL_ATK_CAPTURE_V9__ = true;
+            var lastAtkInputTime = 0;
 
-                    var lastTriggerTime = 0;
-                    var handleDirectPress = function(e) {
-                        if (!isOnlineMode || !onlineConnected || gameState !== 'playing') return;
-                        var now = performance.now();
-                        if (now - lastTriggerTime < 80) {
-                            e.stopImmediatePropagation();
-                            if (e.cancelable) e.preventDefault();
-                            return;
-                        }
-                        lastTriggerTime = now;
-                        e.stopImmediatePropagation();
-                        if (e.cancelable) e.preventDefault();
-                        executeOnlineLocalAttack(mType);
-                    };
+            var globalAttackInterceptor = function(e) {
+                if (!isOnlineMode || !onlineConnected || gameState !== 'playing') return;
+                var mType = detectClickedAttackMoveType(e.target);
+                if (!mType) return;
 
-                    btnEl.addEventListener('touchstart', handleDirectPress, { capture: true, passive: false });
-                    btnEl.addEventListener('mousedown', handleDirectPress, true);
-                    btnEl.addEventListener('click', handleDirectPress, true);
-                })(atkBtns[i], moveTypes[i]);
-            }
+                e.stopImmediatePropagation();
+                if (e.cancelable) e.preventDefault();
+
+                // pointerdown ➔ mousedown ➔ click の連続発火を80msデバウンスで1回にまとめる
+                var now = performance.now();
+                if (now - lastAtkInputTime < 80) return;
+                lastAtkInputTime = now;
+
+                executeOnlineLocalAttack(mType);
+            };
+
+            window.addEventListener('pointerdown', globalAttackInterceptor, { capture: true, passive: false });
+            window.addEventListener('touchstart',  globalAttackInterceptor, { capture: true, passive: false });
+            window.addEventListener('mousedown',   globalAttackInterceptor, { capture: true, passive: false });
+            window.addEventListener('click',       globalAttackInterceptor, { capture: true, passive: false });
         }
 
-        if (!window.__ONLINE_KEY_V8_BOUND__) {
-            window.__ONLINE_KEY_V8_BOUND__ = true;
+        if (!window.__ONLINE_KEY_V9_BOUND__) {
+            window.__ONLINE_KEY_V9_BOUND__ = true;
             window.addEventListener('keydown', function(e) {
                 if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') myLocalPad.left  = true;
                 if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') myLocalPad.right = true;
                 if (e.key === 'ArrowUp'    || e.key === 'w' || e.key === 'W') myLocalPad.up    = true;
                 if (e.key === 'ArrowDown'  || e.key === 's' || e.key === 'S') myLocalPad.down  = true;
 
-                // キーボードでの攻撃キー操作も、オンライン時は自分の担当キャラ（1Pまたは2P）で直接発動
                 if (isOnlineMode && onlineConnected && gameState === 'playing' && !e.repeat) {
                     var k = e.key.toLowerCase();
                     if (k === 'j' || k === 'z') {
@@ -13361,7 +13450,7 @@ function initAll30CharsPatch() {
         }
     }
 
-    // ★指定したファイター（player1 または player2）で技・超必殺技を確実に発動する共通関数
+    // ★指定したファイター（player1 または player2）で通常技・超必殺技を100%確実に発動する関数
     function performMoveOnFighter(targetF, moveType) {
         if (!targetF || targetF.hp <= 0 || gameState !== 'playing') return false;
         if ((targetF.timeStopTimer || 0) > 0 || (targetF.freezeTimer || 0) > 0 || (targetF.zeroGravityTimer || 0) > 0) return false;
@@ -13372,28 +13461,42 @@ function initAll30CharsPatch() {
                 sfx.block();
                 return false;
             }
-            // 弱・強攻撃中からのキャンセル超必殺技にも対応するため、攻撃中（超必殺以外）なら状態をリセットして発動可能にする
             if (targetF.state === 'attack' && targetF.attackType === 'super') return false;
+
+            // 通常攻撃モーション中からのキャンセル超必殺にも対応するため、一旦idleに戻してから発動
             if (targetF.state === 'attack') {
                 targetF.state = 'idle';
                 targetF.attackFrame = 0;
             }
-            // ★重要：startAttack('super')の内部で「this.meter >= 100」がチェックされるため、呼び出す前は必ず100を維持する！
+
+            // startAttack('super')の内部チェックを通過させるため、呼び出し時はmeter=100を保証し、P1チェック対策でplayer1.meterも一時退避
+            var savedP1Meter = player1 ? player1.meter : 0;
             targetF.meter = 100;
-            if (typeof triggerSuperCutin === 'function') {
-                try { triggerSuperCutin(targetF); } catch (e) {}
+            if (player1 && targetF === player2) {
+                player1.meter = 100;
             }
-            var ok = prevStartAttackOnline.call(targetF, 'super');
-            if (!ok) {
-                // 万が一内部条件で弾かれた場合も強制的に超必殺モーションを開始
-                targetF.state = 'attack';
-                targetF.attackType = 'super';
-                targetF.attackFrame = 0;
-                targetF.hasHit = false;
-                sfx.superFlash();
-                ok = true;
+
+            var ok = false;
+            try {
+                if (typeof triggerSuperCutin === 'function') {
+                    try { triggerSuperCutin(targetF); } catch (e) {}
+                }
+                ok = prevStartAttackOnline.call(targetF, 'super');
+                if (!ok) {
+                    targetF.state = 'attack';
+                    targetF.attackType = 'super';
+                    targetF.attackFrame = 0;
+                    targetF.hasHit = false;
+                    sfx.superFlash();
+                    ok = true;
+                }
+            } finally {
+                if (player1 && targetF === player2) {
+                    player1.meter = savedP1Meter;
+                }
             }
-            // 発動完了後にゲージを0に消費
+
+            // 超必殺技が開始された後にゲージを0にする
             targetF.meter = 0;
             return true;
         } else {
@@ -13401,7 +13504,6 @@ function initAll30CharsPatch() {
         }
     }
 
-    // 自分の端末で技ボタンを押した時の実行処理
     function executeOnlineLocalAttack(moveType) {
         if (!isOnlineMode || !onlineConnected || gameState !== 'playing') return;
         sfx.init();
@@ -13409,7 +13511,8 @@ function initAll30CharsPatch() {
         if (!myFighter || myFighter.hp <= 0) return;
 
         if (moveType === 'super') {
-            if ((myFighter.meter || 0) < 100 || (myFighter.infectionTimer || 0) > 0) {
+            // ゲストはplayer2.meter、ホストはplayer1.meterが99.5以上あるかチェック
+            if ((Number(myFighter.meter) || 0) < 99.5 || (myFighter.infectionTimer || 0) > 0) {
                 sfx.block();
                 return;
             }
@@ -13425,7 +13528,7 @@ function initAll30CharsPatch() {
 
         if (started) {
             sendOnlinePacket({ type: 'attack', moveType: moveType });
-            syncMyOnlineMovePanelAndHUD();
+            enforceMyControlPanelDOM();
         }
     }
 
@@ -13638,6 +13741,7 @@ function initAll30CharsPatch() {
         isLaunchingMatch = false;
         myLocalPad = { left: false, right: false, up: false, down: false };
         remoteOnlinePad = { left: false, right: false, up: false, down: false };
+        syncMoveLabelDictionaryForRole();
         if (peerConn) {
             try { peerConn.close(); } catch (e) {}
             peerConn = null;
@@ -13794,6 +13898,7 @@ function initAll30CharsPatch() {
             selectedP2Id = myOnlineCharId;
         }
 
+        syncMoveLabelDictionaryForRole();
         sendOnlinePacket(getMyCharPacket('hello', false));
         startSelectHeartbeat();
 
@@ -13963,6 +14068,7 @@ function initAll30CharsPatch() {
     window.openMode = function(mode) {
         if (!isOnlineMode) {
             setOpponentSelectBoxVisibility(false);
+            syncMoveLabelDictionaryForRole();
         }
         origOpenModeForOnline(mode);
     };
@@ -13985,8 +14091,10 @@ function initAll30CharsPatch() {
                 selectedP1Id = remotePeerCharId;
                 selectedP2Id = myOnlineCharId;
             }
+            syncMoveLabelDictionaryForRole();
             refreshCharacterCardsUI();
             syncSelectPreviewFighters();
+            enforceMyControlPanelDOM();
             sendOnlinePacket(getMyCharPacket('char_select', false));
             return;
         }
@@ -14033,6 +14141,7 @@ function initAll30CharsPatch() {
 
         if (isOnlineMode && onlineConnected) {
             setOpponentSelectBoxVisibility(true);
+            syncMoveLabelDictionaryForRole();
 
             if (onBar) {
                 onBar.classList.remove('hidden');
@@ -14114,6 +14223,7 @@ function initAll30CharsPatch() {
                 selectedP1Id = remotePeerCharId;
                 selectedP2Id = myOnlineCharId;
             }
+            syncMoveLabelDictionaryForRole();
         }
         prevSyncPreviewOnline();
         if (isOnlineMode && onlineConnected) {
@@ -14130,6 +14240,7 @@ function initAll30CharsPatch() {
                 var ruleLabel = onlineUseUpgrades ? '🔥強化あり' : '⚖️強化なし(公平)';
                 statComp.textContent = ruleLabel + ' ｜ 1P(HP:' + s1.maxHp + '/攻撃' + Math.round(s1.atkMult * 100) + '%) vs 2P(HP:' + s2.maxHp + '/攻撃' + Math.round(s2.atkMult * 100) + '%)';
             }
+            enforceMyControlPanelDOM();
         }
     };
 
@@ -14150,6 +14261,9 @@ function initAll30CharsPatch() {
             selectedP2Id = myOnlineCharId;
         }
 
+        // ★試合中は常時 CHAR_MOVE_BUTTON_LABELS を自分の操作キャラの技名に固定（finallyで戻さない！）
+        syncMoveLabelDictionaryForRole();
+
         var savedV1 = vsUnlocked[selectedP1Id];
         var savedV2 = vsUnlocked[selectedP2Id];
         var savedC1 = challengeUnlocked[selectedP1Id];
@@ -14159,21 +14273,9 @@ function initAll30CharsPatch() {
         challengeUnlocked[selectedP1Id] = true;
         challengeUnlocked[selectedP2Id] = true;
 
-        // ★ゲスト側のstartGame実行時に、本体コードがselectedP1Idの技ラベルを参照してもゲスト自身の技ラベルがセットされるよう一時スワップ！
-        var savedP1LabelMap = null;
-        if (onlineRole === 'guest' && typeof CHAR_MOVE_BUTTON_LABELS !== 'undefined') {
-            savedP1LabelMap = CHAR_MOVE_BUTTON_LABELS[selectedP1Id];
-            if (CHAR_MOVE_BUTTON_LABELS[selectedP2Id]) {
-                CHAR_MOVE_BUTTON_LABELS[selectedP1Id] = CHAR_MOVE_BUTTON_LABELS[selectedP2Id];
-            }
-        }
-
         try {
             origStartGameOnlineHook();
         } finally {
-            if (onlineRole === 'guest' && savedP1LabelMap && typeof CHAR_MOVE_BUTTON_LABELS !== 'undefined') {
-                CHAR_MOVE_BUTTON_LABELS[selectedP1Id] = savedP1LabelMap;
-            }
             vsUnlocked[selectedP1Id] = savedV1;
             vsUnlocked[selectedP2Id] = savedV2;
             challengeUnlocked[selectedP1Id] = savedC1;
@@ -14196,7 +14298,7 @@ function initAll30CharsPatch() {
             }
         }
 
-        syncMyOnlineMovePanelAndHUD();
+        enforceMyControlPanelDOM();
 
         if (typeof resizeCanvas === 'function') {
             resizeCanvas();
@@ -14253,7 +14355,13 @@ function initAll30CharsPatch() {
 
             var isMyAssignedFighter = (onlineRole === 'host' && this.isP1) || (onlineRole === 'guest' && !this.isP1);
             if (isMyAssignedFighter) {
-                var ok = performMoveOnFighter(this, type);
+                isExecutingRemoteAttack = true;
+                var ok = false;
+                try {
+                    ok = performMoveOnFighter(this, type);
+                } finally {
+                    isExecutingRemoteAttack = false;
+                }
                 if (ok) {
                     sendOnlinePacket({ type: 'attack', moveType: type });
                 }
@@ -14398,9 +14506,8 @@ function initAll30CharsPatch() {
                     this.facing = (opponent.x >= this.x) ? 1 : -1;
                 }
 
-                // 毎フレーム自分の操作パネル（弱・強・崩・超必殺）とHUD表記を最新状態に保つ
                 if (!this.isP1) {
-                    syncMyOnlineMovePanelAndHUD();
+                    enforceMyControlPanelDOM();
                 }
 
                 if (!this.isP1 && frameCounter % 2 === 0 && player1 && player2) {
@@ -14493,10 +14600,11 @@ function initAll30CharsPatch() {
         player2.maxHp = pkt.p2.maxHp;
         if (pkt.p2.hp < player2.hp) spawnHitSparks(player2.x, player2.y - 85, '#ef4444', 8);
         player2.hp = pkt.p2.hp;
-        // ゲストのゲージが減ってしまわないよう大きい方を採用（超必殺発動時は0になる）
         if (player2.state !== 'attack' || player2.attackType !== 'super') {
             player2.meter = Math.max(player2.meter, pkt.p2.meter);
         }
+
+        enforceMyControlPanelDOM();
 
         if (gameState === 'playing' && (player1.hp <= 0 || player2.hp <= 0)) {
             var winner = player1.hp <= 0 ? player2 : player1;
@@ -14510,13 +14618,14 @@ function initAll30CharsPatch() {
         if (isOnlineMode && onlineConnected && onlineRole === 'host') {
             sendOnlinePacket({ type: 'round_next' });
         }
+        syncMoveLabelDictionaryForRole();
         prevStartNextRoundOnline.apply(this, arguments);
         if (isOnlineMode && onlineConnected) {
             if (player1 && player2) {
                 player1.x = 240; player1.facing = 1;
                 player2.x = 720; player2.facing = -1;
             }
-            syncMyOnlineMovePanelAndHUD();
+            enforceMyControlPanelDOM();
         }
     };
 
@@ -14534,12 +14643,13 @@ function initAll30CharsPatch() {
         prevBackToSelectOnline();
     };
 
-    function initOnlineVsPatchV8() {
+    function initOnlineVsPatchV9() {
+        backupOriginalMoveLabels();
         injectOnlineUI();
     }
 
-    initOnlineVsPatchV8();
-    window.addEventListener('DOMContentLoaded', initOnlineVsPatchV8);
+    initOnlineVsPatchV9();
+    window.addEventListener('DOMContentLoaded', initOnlineVsPatchV9);
 })();
 </script>
 </body>
