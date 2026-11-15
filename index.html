@@ -12993,7 +12993,7 @@ function initAll30CharsPatch() {
     window.addEventListener('DOMContentLoaded', initAll30CharsPatch);
 })();
 </script>
-<!-- ==================== 🌐 PeerJS オンライン通信対戦＆暗号限定3大隠しキャラ（ムサシ・ヨハネ神父・看護師長）追加パッチ（V14完全版） ==================== -->
+<!-- ==================== 🌐 PeerJS オンライン通信対戦＆暗号限定3大隠しキャラ（ムサシ・ヨハネ神父・看護師長）追加パッチ（V15：2回戦目以降の連続対戦ロックバグ完全修正版） ==================== -->
 <style>
 /* タイトル画面の「💰BP暗号」ボタンを非表示にし、「🔑解放暗号」の1つだけに統一 */
 #btn-bp-secret-title {
@@ -13003,8 +13003,8 @@ function initAll30CharsPatch() {
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (function() {
-    if (window.__ONLINE_VS_PATCH_V14_LOADED__) return;
-    window.__ONLINE_VS_PATCH_V14_LOADED__ = true;
+    if (window.__ONLINE_VS_PATCH_V15_LOADED__) return;
+    window.__ONLINE_VS_PATCH_V15_LOADED__ = true;
 
     if (typeof window.Peer === 'undefined') {
         var fallbackScript = document.createElement('script');
@@ -13049,7 +13049,6 @@ function initAll30CharsPatch() {
     CHAR_MOVE_BUTTON_LABELS.father  = { light: '魔神の黒爪引き裂き', heavy: '魔王獄炎なぎ払い',   special: '神魔融合・天地双裁き' };
     CHAR_MOVE_BUTTON_LABELS.matron  = { light: '赤ペン査定ビシッ',   heavy: '総回診カルテ強打',   special: '師長の絶対指導喝破' };
 
-    // 実績「全キャラ解放」は通常プレイの30キャラ解放で達成できるよう維持
     if (typeof TROPHY_LIST !== 'undefined' && Array.isArray(TROPHY_LIST)) {
         TROPHY_LIST.forEach(function(t) {
             if (t.id === 'all_unlock') {
@@ -13062,7 +13061,6 @@ function initAll30CharsPatch() {
         });
     }
 
-    // 3体の専用サウンドエフェクト
     SoundEngine.prototype.katanaSlashSound = function() {
         this.init(); if (!this.seEnabled || !this.ctx) return;
         var now = this.ctx.currentTime, self = this;
@@ -13082,7 +13080,6 @@ function initAll30CharsPatch() {
     SoundEngine.prototype.godDemonBellSound = function() {
         this.init(); if (!this.seEnabled || !this.ctx) return;
         var now = this.ctx.currentTime, self = this;
-        // 悪魔の重低音咆哮＋神の聖なる高音チャイムの同時共鳴
         [73.4, 110, 1046.5, 1567.98].forEach(function(freq, i) {
             var osc = self.ctx.createOscillator(), g = self.ctx.createGain();
             osc.type = i < 2 ? 'sawtooth' : 'sine';
@@ -13111,12 +13108,12 @@ function initAll30CharsPatch() {
         });
     };
 
-    var prevPlayVoiceV14 = playCharSelectVoice;
+    var prevPlayVoiceV15 = playCharSelectVoice;
     playCharSelectVoice = function(charId) {
         if (charId === 'musashi') { sfx.katanaSlashSound(); return; }
         if (charId === 'father')  { sfx.godDemonBellSound(); return; }
         if (charId === 'matron')  { sfx.matronReflectSound(); return; }
-        prevPlayVoiceV14(charId);
+        prevPlayVoiceV15(charId);
     };
 
     // -------------------------------------------------------------------------
@@ -13292,13 +13289,11 @@ function initAll30CharsPatch() {
         ctx.translate(x, y);
         ctx.scale(scale, scale);
 
-        // 黒い神父襟と白いローマンカラー
         ctx.fillStyle = '#09090b';
         ctx.fillRect(-11, -5, 22, 16);
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(-6, -2, 12, 6);
 
-        // 彫りの深い厳格な神父の顔
         var skinGrad = ctx.createRadialGradient(2, -22, 2, 0, -22, 24);
         skinGrad.addColorStop(0, '#f1f5f9');
         skinGrad.addColorStop(0.6, '#cbd5e1');
@@ -13310,7 +13305,6 @@ function initAll30CharsPatch() {
         ctx.roundRect(-17, -43, 34, 42, 10);
         ctx.fill(); ctx.stroke();
 
-        // 銀髪オールバックと黒の司祭帽（ビレッタ）
         ctx.fillStyle = '#94a3b8';
         ctx.beginPath(); ctx.roundRect(-18, -48, 36, 12, 4); ctx.fill();
         ctx.fillStyle = '#09090b';
@@ -13318,7 +13312,6 @@ function initAll30CharsPatch() {
         ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.roundRect(-19, -56, 38, 12, 3); ctx.fill(); ctx.stroke();
 
-        // 普段は糸目（祈り）、攻撃時は黄金＆深紅に開眼
         [-5, 9].forEach(function(ex, idx) {
             if (isAttacking || isHit) {
                 ctx.fillStyle = idx === 0 ? '#fde047' : '#ef4444';
@@ -13342,16 +13335,12 @@ function initAll30CharsPatch() {
         ctx.save();
         if (this.state === 'ko') { ctx.translate(0, -18); ctx.rotate(-Math.PI / 2); ctx.translate(0, 95); }
 
-        // =====================================================================
-        // 【A】背後にそびえ立つ「巨大で恐ろしい悪魔」の描画（攻撃時は前方に飛び出して魔爪＆獄炎で攻撃！）
-        // =====================================================================
         var demonLungeX = isAtk ? (45 + Math.sin(Math.min(1, f / 12) * Math.PI) * 95) : (-32 + Math.sin(t * 0.08) * 6);
         var demonFloatY = -148 + Math.cos(t * 0.1) * 7;
 
         ctx.save();
         ctx.translate(demonLungeX, demonFloatY);
 
-        // 悪魔の禍々しい暗黒オーラ
         var dAura = ctx.createRadialGradient(0, 10, 10, 0, 10, 95);
         dAura.addColorStop(0, 'rgba(220, 38, 38, 0.65)');
         dAura.addColorStop(0.5, 'rgba(88, 28, 135, 0.45)');
@@ -13359,7 +13348,6 @@ function initAll30CharsPatch() {
         ctx.fillStyle = dAura;
         ctx.beginPath(); ctx.arc(0, 10, 95, 0, Math.PI * 2); ctx.fill();
 
-        // 巨大な悪魔の蝙蝠翼（左右）
         var wingFlap = Math.sin(t * 0.18) * 14;
         ctx.fillStyle = '#27091b';
         ctx.strokeStyle = '#991b1b';
@@ -13375,7 +13363,6 @@ function initAll30CharsPatch() {
             ctx.fill(); ctx.stroke();
         });
 
-        // 悪魔の筋肉質な巨体
         var dBodyGrad = ctx.createLinearGradient(-42, -35, 42, 65);
         dBodyGrad.addColorStop(0, '#450a0a');
         dBodyGrad.addColorStop(0.5, '#18181b');
@@ -13389,11 +13376,9 @@ function initAll30CharsPatch() {
         ctx.closePath();
         ctx.fill(); ctx.stroke();
 
-        // 悪魔の頭部と巨大な2本の湾曲黒角
         ctx.strokeStyle = '#f43f5e';
         ctx.fillStyle = '#09090b';
         ctx.lineWidth = 3;
-        // 左角・右角
         [-1, 1].forEach(function(dir) {
             ctx.beginPath();
             ctx.moveTo(dir * 16, -42);
@@ -13403,13 +13388,11 @@ function initAll30CharsPatch() {
             ctx.fill(); ctx.stroke();
         });
 
-        // 悪魔の恐ろしい顔と3つの紅い眼光・牙の裂け口
         ctx.fillStyle = '#18181b';
         ctx.strokeStyle = '#ef4444';
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(4, -38, 24, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-        // 3つの紅く燃える眼
         ctx.fillStyle = '#fef08a';
         ctx.shadowColor = '#ef4444';
         ctx.shadowBlur = 14;
@@ -13418,7 +13401,6 @@ function initAll30CharsPatch() {
         });
         ctx.shadowBlur = 0;
 
-        // 牙が並ぶ裂けた口
         ctx.fillStyle = '#7f1d1d';
         ctx.beginPath(); ctx.roundRect(-8, -31, 26, isAtk ? 14 : 8, 3); ctx.fill();
         ctx.fillStyle = '#ffffff';
@@ -13428,12 +13410,10 @@ function initAll30CharsPatch() {
             ctx.fill();
         }
 
-        // 悪魔の巨大な魔爪アーム（攻撃時に前方へ豪快に伸びて引き裂く！）
         var clawReachX = isAtk ? (85 + Math.sin(Math.min(1, f / 10) * Math.PI) * 95) : 42;
         var clawReachY = isAtk ? (18 + Math.cos(f * 0.6) * 22) : 16;
         drawRoundedLimb(ctx, 24, -12, clawReachX, clawReachY, 18, 15, '#450a0a', '#ef4444');
 
-        // 鋭い5本の紅い悪魔鉤爪と暗黒スラッシュ軌跡
         ctx.save();
         ctx.translate(clawReachX, clawReachY);
         ctx.strokeStyle = '#f43f5e';
@@ -13450,16 +13430,12 @@ function initAll30CharsPatch() {
             ctx.beginPath(); ctx.arc(10, 0, 48, -Math.PI * 0.45, Math.PI * 0.45); ctx.stroke();
         }
         ctx.restore();
-        ctx.restore(); // 悪魔終了
+        ctx.restore();
 
-        // =====================================================================
-        // 【B】必殺技（崩・超）発動時：天上から「神（黄金後光・天使翼・天罰聖光）」が降臨して悪魔と同時攻撃！
-        // =====================================================================
         if (isDivineCombo) {
             var targetBeamX = 175 + Math.sin(f * 0.4) * 25;
             ctx.save();
 
-            // 天上から降り注ぐ神の黄金聖光レーザー柱
             var beamGrad = ctx.createLinearGradient(targetBeamX - 55, -320, targetBeamX + 55, 0);
             beamGrad.addColorStop(0, 'rgba(255, 255, 255, 0.98)');
             beamGrad.addColorStop(0.4, 'rgba(253, 224, 71, 0.85)');
@@ -13473,13 +13449,11 @@ function initAll30CharsPatch() {
             ctx.closePath();
             ctx.fill();
 
-            // 上空に顕現する「神」の黄金後光（ヘイロー）と純白の熾天使6枚翼
             ctx.translate(targetBeamX, -225);
             ctx.strokeStyle = '#fef08a';
             ctx.lineWidth = 5;
             ctx.beginPath(); ctx.arc(0, 0, 42 + Math.sin(t * 0.5) * 5, 0, Math.PI * 2); ctx.stroke();
 
-            // 神の白い翼
             ctx.fillStyle = '#ffffff';
             ctx.strokeStyle = '#fde047';
             ctx.lineWidth = 2;
@@ -13492,7 +13466,6 @@ function initAll30CharsPatch() {
                 ctx.fill(); ctx.stroke();
             });
 
-            // 神の巨大な黄金十字架と全知の瞳
             ctx.fillStyle = '#ffffff';
             ctx.shadowColor = '#fde047';
             ctx.shadowBlur = 20;
@@ -13500,7 +13473,6 @@ function initAll30CharsPatch() {
             ctx.fillRect(-26, -14, 52, 14);
             ctx.shadowBlur = 0;
 
-            // 下方の悪魔から同時に噴き上がる暗黒獄炎とのクロス衝撃波
             ctx.strokeStyle = '#ef4444';
             ctx.lineWidth = 5;
             ctx.beginPath();
@@ -13511,16 +13483,12 @@ function initAll30CharsPatch() {
             ctx.restore();
         }
 
-        // =====================================================================
-        // 【C】手前に立つヨハネ神父本人（黒カソック＆黄金の十字架）
-        // =====================================================================
         var hipY = (this.state === 'crouch') ? -68 : -94 + Math.sin(t * 0.12) * 2;
         var walkSwing = (this.state === 'walk') ? Math.sin(t * 0.28) * 20 : 0;
 
         drawRoundedLimb(ctx, -9, hipY, -16 + walkSwing, -5, 12, 9, '#09090b', '#334155');
         drawRoundedLimb(ctx, 9, hipY, 18 - walkSwing, -5, 12, 9, '#09090b', '#334155');
 
-        // 黒いカソック（神父のロング法衣）と深紅・紫のストール（懸帯）
         ctx.fillStyle = '#09090b';
         ctx.strokeStyle = '#475569';
         ctx.lineWidth = 1.8;
@@ -13532,7 +13500,6 @@ function initAll30CharsPatch() {
         ctx.closePath();
         ctx.fill(); ctx.stroke();
 
-        // 胸から垂れる黄金刺繍入り紫ストール
         ctx.fillStyle = '#581c87';
         ctx.strokeStyle = '#facc15';
         ctx.lineWidth = 1.4;
@@ -13543,7 +13510,6 @@ function initAll30CharsPatch() {
 
         drawFatherHead(ctx, 2, hipY - 64, 1.0, this.state === 'hit', isAtk);
 
-        // 右手に掲げる「黄金の十字架（クルシフィクス）」
         var rHandX = isAtk ? 46 : 32;
         var rHandY = hipY - 46;
         drawRoundedLimb(ctx, 14, hipY - 50, rHandX, rHandY, 10, 8, '#09090b', '#475569');
@@ -13578,7 +13544,6 @@ function initAll30CharsPatch() {
         ctx.fillStyle = '#f1c27d';
         ctx.fillRect(-9, -4, 18, 15);
 
-        // おばさん看護師長のふくよかで威厳のある輪郭とまとめ髪（お団子ヘア）
         ctx.fillStyle = '#334155';
         ctx.beginPath(); ctx.arc(-18, -32, 12, 0, Math.PI * 2); ctx.fill();
 
@@ -13593,13 +13558,11 @@ function initAll30CharsPatch() {
         ctx.roundRect(-19, -43, 38, 43, 14);
         ctx.fill(); ctx.stroke();
 
-        // 髪（前髪とサイドの白髪交じり黒髪）
         ctx.fillStyle = '#1e293b';
         ctx.beginPath();
         ctx.roundRect(-20, -47, 40, 13, 6);
         ctx.fill();
 
-        // ほうれい線（ベテラン感）と厳しい口元
         ctx.strokeStyle = '#9a3412';
         ctx.lineWidth = 1.4;
         ctx.beginPath();
@@ -13609,22 +13572,18 @@ function initAll30CharsPatch() {
         ctx.fillStyle = '#be123c';
         ctx.beginPath(); ctx.roundRect(-5, -11, 14, isAttacking ? 6 : 3.5, 2); ctx.fill();
 
-        // 特徴的な「鋭く光る赤フレーム眼鏡（キラーン！）」
         ctx.save();
         ctx.fillStyle = 'rgba(224, 242, 254, 0.88)';
         ctx.strokeStyle = '#dc2626';
         ctx.lineWidth = 2.2;
-        // 左レンズ・右レンズ（スクエア眼鏡）
         ctx.beginPath();
         ctx.roundRect(-14, -29, 13, 9, 2);
         ctx.roundRect(3, -29, 13, 9, 2);
         ctx.fill(); ctx.stroke();
-        // 眼鏡のブリッジとつる
         ctx.beginPath();
         ctx.moveTo(-1, -25); ctx.lineTo(3, -25);
         ctx.moveTo(-19, -25); ctx.lineTo(-14, -25);
         ctx.stroke();
-        // レンズの白い反射ハイライト
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.8;
         ctx.beginPath();
@@ -13633,7 +13592,6 @@ function initAll30CharsPatch() {
         ctx.stroke();
         ctx.restore();
 
-        // 金色の2本線が入った「総看護師長ナースキャップ」
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = '#cbd5e1';
         ctx.lineWidth = 1.6;
@@ -13645,7 +13603,6 @@ function initAll30CharsPatch() {
         ctx.closePath();
         ctx.fill(); ctx.stroke();
 
-        // 師長の証であるゴールド2本線と赤十字
         ctx.fillStyle = '#eab308';
         ctx.fillRect(-21, -57, 42, 3);
         ctx.fillStyle = '#ef4444';
@@ -13664,7 +13621,6 @@ function initAll30CharsPatch() {
         var hipY = (this.state === 'crouch') ? -66 : -92 + breath * 0.5;
         var walkSwing = (this.state === 'walk') ? Math.sin(t * 0.3) * 20 : 0;
 
-        // 常時展開されている「絶対指導・全攻撃反射バリア（六角形ハニカムオーラ）」
         ctx.save();
         ctx.translate(0, hipY - 22);
         var shieldPulse = Math.sin(t * 0.2) * 4;
@@ -13680,11 +13636,9 @@ function initAll30CharsPatch() {
         ctx.setLineDash([]);
         ctx.restore();
 
-        // 白いナースサンダルとストッキング脚
         drawRoundedLimb(ctx, -10, hipY, -16 + walkSwing, -5, 13, 10, '#f5cfa0', '#78350f');
         drawRoundedLimb(ctx, 10, hipY, 18 - walkSwing, -5, 13, 10, '#f5cfa0', '#78350f');
 
-        // 総看護師長の威厳ある白衣（ネイビーのパイピング襟付き）
         ctx.save();
         ctx.translate(0, hipY);
         var coatGrad = ctx.createLinearGradient(-25, -64, 25, 20);
@@ -13698,14 +13652,12 @@ function initAll30CharsPatch() {
         ctx.roundRect(-24, -62, 48, 74, 8);
         ctx.fill(); ctx.stroke();
 
-        // 胸元の「総看護師長」金バッジ
         ctx.fillStyle = '#facc15';
         ctx.strokeStyle = '#713f12';
         ctx.lineWidth = 1.2;
         ctx.fillRect(6, -48, 14, 8);
         ctx.strokeRect(6, -48, 14, 8);
 
-        // 左手に抱えた分厚い「勤務表＆指導バインダー」
         drawRoundedLimb(ctx, -16, -50, -28, -28, 11, 9, '#ffffff', '#64748b');
         ctx.fillStyle = '#78350f';
         ctx.strokeStyle = '#facc15';
@@ -13714,7 +13666,6 @@ function initAll30CharsPatch() {
         drawMatronHead(ctx, 2, -64, 1.0, this.state === 'hit', this.state === 'attack');
         ctx.restore();
 
-        // 右手と「恐怖の赤ペン査定 / 指導メガホン」
         var rHandX = (this.state === 'attack') ? 78 : 32;
         var rHandY = hipY - 44;
         drawRoundedLimb(ctx, 16, hipY - 50, rHandX, rHandY, 11, 9, '#ffffff', '#64748b');
@@ -13728,7 +13679,6 @@ function initAll30CharsPatch() {
         ctx.beginPath(); ctx.roundRect(0, -4, 34, 8, 3); ctx.fill(); ctx.stroke();
         ctx.restore();
 
-        // 過労・激務の汗エフェクト
         if (t % 16 < 8) {
             ctx.fillStyle = '#38bdf8';
             ctx.beginPath();
@@ -13740,18 +13690,16 @@ function initAll30CharsPatch() {
         ctx.restore();
     };
 
-    // ヘッド描画フック（3体とも対応）
-    var prevDrawHeadV14 = drawRealisticHead;
+    var prevDrawHeadV15 = drawRealisticHead;
     drawRealisticHead = function(ctx, id, x, y, scale, isHit) {
         scale = scale || 1;
         if (id === 'musashi') { drawMusashiHead(ctx, x, y, scale, isHit, true); return; }
         if (id === 'father')  { drawFatherHead(ctx, x, y, scale, isHit, true); return; }
         if (id === 'matron')  { drawMatronHead(ctx, x, y, scale, isHit, true); return; }
-        prevDrawHeadV14(ctx, id, x, y, scale, isHit);
+        prevDrawHeadV15(ctx, id, x, y, scale, isHit);
     };
 
-    // 全身描画フック＋看護師長の「自滅カウントダウン表示」
-    var prevFighterDrawV14 = Fighter.prototype.draw;
+    var prevFighterDrawV15 = Fighter.prototype.draw;
     Fighter.prototype.draw = function(ctx) {
         if (this.id === 'musashi' || this.id === 'father' || this.id === 'matron') {
             var savedId = this.id;
@@ -13759,16 +13707,15 @@ function initAll30CharsPatch() {
             this.id = 'hanako';
             this.drawHanako = (savedId === 'musashi') ? this.drawMusashi : ((savedId === 'father') ? this.drawFather : this.drawMatron);
             try {
-                prevFighterDrawV14.call(this, ctx);
+                prevFighterDrawV15.call(this, ctx);
             } finally {
                 this.id = savedId;
                 this.drawHanako = origH;
             }
         } else {
-            prevFighterDrawV14.call(this, ctx);
+            prevFighterDrawV15.call(this, ctx);
         }
 
-        // 👓 看護師長がバトル中の時、頭上に「絶対反射バリア稼働中＆過労自滅カウント」を表示
         if (this.id === 'matron' && this.state !== 'ko' && gameState === 'playing') {
             ctx.save();
             ctx.translate(this.x, Math.min(GROUND_Y, this.y) - 196);
@@ -13786,8 +13733,7 @@ function initAll30CharsPatch() {
         }
     };
 
-    // 3体の技データ定義
-    var prevGetMoveDataV14 = Fighter.prototype.getMoveData;
+    var prevGetMoveDataV15 = Fighter.prototype.getMoveData;
     Fighter.prototype.getMoveData = function(type) {
         var customSecretMoves = {
             musashi: {
@@ -13814,11 +13760,10 @@ function initAll30CharsPatch() {
             if ((this.inkBlindTimer || 0) > 0) m.range = Math.round(m.range * 0.80);
             return m;
         }
-        return prevGetMoveDataV14.call(this, type);
+        return prevGetMoveDataV15.call(this, type);
     };
 
-    // 3体のステータス計算
-    var prevComputeStatsV14 = computeFighterCombatStats;
+    var prevComputeStatsV15 = computeFighterCombatStats;
     computeFighterCombatStats = function(id, isP1) {
         if (isPasscodeOnlyChar(id)) {
             var upg = charUpgrades[id] || { atk: 1, hp: 1, mtr: 1 };
@@ -13839,10 +13784,9 @@ function initAll30CharsPatch() {
                 recLv: Math.round((upg.atk + upg.hp + upg.mtr) / 3)
             };
         }
-        return prevComputeStatsV14(id, isP1);
+        return prevComputeStatsV15(id, isP1);
     };
 
-    // 3体のカードDOMと技表エントリーを追加
     function ensureSecretPassCharsDOM() {
         ['p1', 'p2'].forEach(function(side) {
             var ryujiCard = document.getElementById(side + '-card-ryuji');
@@ -13896,15 +13840,14 @@ function initAll30CharsPatch() {
         }
     }
 
-    // ★解放暗号（キャラ全解放）を実行した時だけ3体の隠しキャラが解放されるフック
-    var prevUnlockAllBySecretV14 = unlockAllCharactersBySecret;
+    var prevUnlockAllBySecretV15 = unlockAllCharactersBySecret;
     unlockAllCharactersBySecret = function() {
         isSecretPassUnlocked = true;
         try {
             localStorage.setItem(SECRET_STORAGE_KEY, '1');
             localStorage.setItem('rojiura_brawl_secret_musashi_unlocked_v1', '1');
         } catch (e) {}
-        prevUnlockAllBySecretV14();
+        prevUnlockAllBySecretV15();
         SECRET_ONLY_IDS.forEach(function(id) {
             vsUnlocked[id] = true;
             challengeUnlocked[id] = true;
@@ -13914,9 +13857,9 @@ function initAll30CharsPatch() {
         refreshCharacterCardsUI();
     };
 
-    var prevLoadProgressV14 = loadGameProgress;
+    var prevLoadProgressV15 = loadGameProgress;
     loadGameProgress = function() {
-        prevLoadProgressV14();
+        prevLoadProgressV15();
         isSecretPassUnlocked = (
             localStorage.getItem(SECRET_STORAGE_KEY) === '1' ||
             localStorage.getItem('rojiura_brawl_secret_musashi_unlocked_v1') === '1'
@@ -13930,7 +13873,7 @@ function initAll30CharsPatch() {
         });
     };
 
-    var prevExecuteResetV14 = window.executeDataReset;
+    var prevExecuteResetV15 = window.executeDataReset;
     window.executeDataReset = function() {
         isSecretPassUnlocked = false;
         try {
@@ -13942,10 +13885,10 @@ function initAll30CharsPatch() {
             challengeUnlocked[id] = false;
             charUpgrades[id] = { atk: 1, hp: 1, mtr: 1 };
         });
-        prevExecuteResetV14();
+        prevExecuteResetV15();
     };
 
-    var prevIsCharUnlockedV14 = isCharUnlockedForCurrentMode;
+    var prevIsCharUnlockedV15 = isCharUnlockedForCurrentMode;
     isCharUnlockedForCurrentMode = function(charId, forCpuSide) {
         if (isPasscodeOnlyChar(charId)) {
             if (forCpuSide && (gameMode === 'challenge' || gameMode === 'survival')) {
@@ -13953,16 +13896,16 @@ function initAll30CharsPatch() {
             }
             return !!isSecretPassUnlocked;
         }
-        return prevIsCharUnlockedV14(charId, forCpuSide);
+        return prevIsCharUnlockedV15(charId, forCpuSide);
     };
 
-    var prevGetUnlockReqTextV14 = getCharUnlockRequirementText;
+    var prevGetUnlockReqTextV15 = getCharUnlockRequirementText;
     getCharUnlockRequirementText = function(charId) {
         if (isPasscodeOnlyChar(charId)) return '🔑解放暗号（全キャラ解放）で出現';
-        return prevGetUnlockReqTextV14(charId);
+        return prevGetUnlockReqTextV15(charId);
     };
 
-    var prevShowSecretToastV14 = showSecretToast;
+    var prevShowSecretToastV15 = showSecretToast;
     showSecretToast = function(charId) {
         if (isPasscodeOnlyChar(charId)) {
             var toast = document.getElementById('secret-notice-toast');
@@ -13974,11 +13917,11 @@ function initAll30CharsPatch() {
             secretToastTimer = setTimeout(function() { toast.classList.add('hidden'); }, 3200);
             return;
         }
-        prevShowSecretToastV14(charId);
+        prevShowSecretToastV15(charId);
     };
 
     // =========================================================================
-    // オンライン対戦＆システム共通設定
+    // オンライン対戦＆システム共通設定（★2回戦目以降のデッドロック防止機能搭載）
     // =========================================================================
     var ROOM_PREFIX = 'rojiura-brawl-v30-room-';
     var ALLOWED_PACKET_TYPES = [
@@ -14006,7 +13949,10 @@ function initAll30CharsPatch() {
     var remotePeerAuraId = 'none';
     var myReadyState = false;
     var remoteReadyState = false;
-    var isLaunchingMatch = false;
+
+    // ★V15重要改善：永久ロックになっていた isLaunchingMatch の代わりに、1.2秒だけ多重起動を防ぐタイムスタンプ方式を採用！
+    var lastMatchLaunchTimestamp = 0;
+    var wasInSelectScreenLastFrame = false;
 
     var myLocalPad = { left: false, right: false, up: false, down: false };
     var remoteOnlinePad = { left: false, right: false, up: false, down: false };
@@ -14015,6 +13961,17 @@ function initAll30CharsPatch() {
     var isExecutingRemoteAttack = false;
     var isReroutingGuestAttack = false;
     var isApplyingRemoteRoundEnd = false;
+    var isHandlingRematchPacket = false;
+
+    function isCurrentlyInMatchLaunchCooldown() {
+        return (performance.now() - lastMatchLaunchTimestamp) < 1200;
+    }
+
+    // キャラ選択画面が現在表示されているかを確実に判定するヘルパー
+    function isSelectScreenVisibleNow() {
+        var cs = document.getElementById('char-select-screen');
+        return !!(cs && !cs.classList.contains('hidden'));
+    }
 
     function hideElementCompletely(el) {
         if (!el || !el.style) return;
@@ -14312,10 +14269,24 @@ function initAll30CharsPatch() {
     }
 
     // =========================================================================
-    // 2. フレーム完了直後（requestAnimationFrame直後）の操作パネル＆超必殺ゲージ強制同期
+    // 2. フレーム完了直後（requestAnimationFrame直後）の操作パネル同期＆2回戦目遷移の自動監視
     // =========================================================================
     function enforceMyControlPanelDOM() {
         if (!isOnlineMode || !onlineConnected) return;
+
+        // ★V15重要機能：1回戦（三本勝負）が終わってキャラ選択画面が表示された瞬間を毎フレーム監視し、
+        // どのような経路でキャラ選択画面に戻っても確実にロックを解除して2回戦目を開始可能にする！
+        var inSelectNow = isSelectScreenVisibleNow();
+        if (inSelectNow && !wasInSelectScreenLastFrame) {
+            lastMatchLaunchTimestamp = 0;
+            myReadyState = false;
+            remoteReadyState = false;
+            clearLaunchRetryTimers();
+            startSelectHeartbeat();
+            refreshCharacterCardsUI();
+        }
+        wasInSelectScreenLastFrame = inSelectNow;
+
         syncMoveLabelDictionaryForRole();
 
         var myFighter = (onlineRole === 'host') ? player1 : player2;
@@ -14442,8 +14413,8 @@ function initAll30CharsPatch() {
         ];
         btnMap.forEach(function(item) {
             var el = document.getElementById(item.id);
-            if (!el || el.dataset.onlineBoundV14) return;
-            el.dataset.onlineBoundV14 = '1';
+            if (!el || el.dataset.onlineBoundV15) return;
+            el.dataset.onlineBoundV15 = '1';
 
             var setPress = function(val) {
                 myLocalPad[item.key] = val;
@@ -14459,8 +14430,8 @@ function initAll30CharsPatch() {
             el.addEventListener('mouseup', function() { setPress(false); });
         });
 
-        if (!window.__ONLINE_GLOBAL_ATK_CAPTURE_V14__) {
-            window.__ONLINE_GLOBAL_ATK_CAPTURE_V14__ = true;
+        if (!window.__ONLINE_GLOBAL_ATK_CAPTURE_V15__) {
+            window.__ONLINE_GLOBAL_ATK_CAPTURE_V15__ = true;
             var lastAtkInputTime = 0;
 
             var globalAttackInterceptor = function(e) {
@@ -14484,8 +14455,8 @@ function initAll30CharsPatch() {
             window.addEventListener('click',       globalAttackInterceptor, { capture: true, passive: false });
         }
 
-        if (!window.__ONLINE_KEY_V14_BOUND__) {
-            window.__ONLINE_KEY_V14_BOUND__ = true;
+        if (!window.__ONLINE_KEY_V15_BOUND__) {
+            window.__ONLINE_KEY_V15_BOUND__ = true;
             window.addEventListener('keydown', function(e) {
                 if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') myLocalPad.left  = true;
                 if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') myLocalPad.right = true;
@@ -14822,10 +14793,11 @@ function initAll30CharsPatch() {
         }
     }
 
+    // ★V15重要改善：ハートビート通信は「キャラ選択画面が表示されている間だけ」動くように厳密化（試合中の古いReadyパケット混入を完全防止）
     function startSelectHeartbeat() {
         stopSelectHeartbeat();
         selectSyncInterval = setInterval(function() {
-            if (isOnlineMode && onlineConnected && gameState !== 'playing' && !isLaunchingMatch) {
+            if (isOnlineMode && onlineConnected && isSelectScreenVisibleNow() && !isCurrentlyInMatchLaunchCooldown()) {
                 sendOnlinePacket(getMyCharPacket('char_select', myReadyState));
                 checkAndTriggerBothReadyLaunch();
             }
@@ -14841,7 +14813,7 @@ function initAll30CharsPatch() {
         onlineRoomCode = '';
         myReadyState = false;
         remoteReadyState = false;
-        isLaunchingMatch = false;
+        lastMatchLaunchTimestamp = 0;
         myLocalPad = { left: false, right: false, up: false, down: false };
         remoteOnlinePad = { left: false, right: false, up: false, down: false };
         syncMoveLabelDictionaryForRole();
@@ -14963,14 +14935,17 @@ function initAll30CharsPatch() {
         };
     }
 
-    function checkAndTriggerBothReadyLaunch() {
-        if (!isOnlineMode || !onlineConnected || gameState === 'playing' || isLaunchingMatch) return;
+    // ★V15重要改善：永久ロックフラグを廃止し、1回戦目でも2回戦目でも何回戦目でも両者がReadyになれば100%確実に開始する関数
+    function checkAndTriggerBothReadyLaunch(forceImmediate) {
+        if (!isOnlineMode || !onlineConnected) return;
+        if (!forceImmediate && (!isSelectScreenVisibleNow() || isCurrentlyInMatchLaunchCooldown())) return;
         if (myReadyState && remoteReadyState) {
-            isLaunchingMatch = true;
+            lastMatchLaunchTimestamp = performance.now();
             var launchPkt = getMyCharPacket('launch_match', true);
             sendOnlinePacket(launchPkt);
-            launchRetryTimers.push(setTimeout(function() { sendOnlinePacket(launchPkt); }, 120));
-            launchRetryTimers.push(setTimeout(function() { sendOnlinePacket(launchPkt); }, 300));
+            clearLaunchRetryTimers();
+            launchRetryTimers.push(setTimeout(function() { sendOnlinePacket(launchPkt); }, 100));
+            launchRetryTimers.push(setTimeout(function() { sendOnlinePacket(launchPkt); }, 250));
             executeOnlineMatchStart();
         }
     }
@@ -14981,7 +14956,7 @@ function initAll30CharsPatch() {
         isOnlineMode = true;
         myReadyState = false;
         remoteReadyState = false;
-        isLaunchingMatch = false;
+        lastMatchLaunchTimestamp = 0;
         sfx.superFlash();
 
         var modal = document.getElementById('online-lobby-modal');
@@ -15037,7 +15012,11 @@ function initAll30CharsPatch() {
                     remotePeerCharId = pkt.charId;
                     remotePeerUpgrades = pkt.upgrades;
                     remotePeerAuraId = pkt.auraId;
-                    remoteReadyState = !!pkt.ready;
+
+                    // キャラ選択画面にいるときだけ相手のReady状態を受け取る（バトル中の古いパケットは無視）
+                    if (isSelectScreenVisibleNow() || gameState === 'select') {
+                        remoteReadyState = !!pkt.ready;
+                    }
 
                     if (onlineRole === 'guest') {
                         onlineUseUpgrades = pkt.useUpgrades;
@@ -15051,10 +15030,10 @@ function initAll30CharsPatch() {
                     }
                     updateOnlineRuleButtonsUI();
                     refreshCharacterCardsUI();
-                    if ((charChanged || ruleChanged) && gameState !== 'playing') {
+                    if ((charChanged || ruleChanged) && isSelectScreenVisibleNow()) {
                         syncSelectPreviewFighters();
                     }
-                    checkAndTriggerBothReadyLaunch();
+                    checkAndTriggerBothReadyLaunch(false);
                 } else if (pkt.type === 'rule_sync') {
                     if (onlineRole === 'guest') {
                         onlineUseUpgrades = pkt.useUpgrades;
@@ -15063,20 +15042,23 @@ function initAll30CharsPatch() {
                         syncSelectPreviewFighters();
                     }
                 } else if (pkt.type === 'launch_match') {
-                    if (gameState !== 'playing' && !isLaunchingMatch) {
-                        isLaunchingMatch = true;
-                        remotePeerCharId = pkt.charId;
-                        remotePeerUpgrades = pkt.upgrades;
-                        remotePeerAuraId = pkt.auraId;
-                        if (onlineRole === 'guest') {
-                            onlineUseUpgrades = pkt.useUpgrades;
-                            selectedP1Id = remotePeerCharId;
-                            selectedP2Id = myOnlineCharId;
-                        } else {
-                            selectedP1Id = myOnlineCharId;
-                            selectedP2Id = remotePeerCharId;
+                    // ★相手から launch_match が届いた時、自分が選択画面にいる（または2回戦目待機中）なら即座に試合開始！
+                    if (isSelectScreenVisibleNow() || gameState !== 'playing') {
+                        if (!isCurrentlyInMatchLaunchCooldown()) {
+                            lastMatchLaunchTimestamp = performance.now();
+                            remotePeerCharId = pkt.charId;
+                            remotePeerUpgrades = pkt.upgrades;
+                            remotePeerAuraId = pkt.auraId;
+                            if (onlineRole === 'guest') {
+                                onlineUseUpgrades = pkt.useUpgrades;
+                                selectedP1Id = remotePeerCharId;
+                                selectedP2Id = myOnlineCharId;
+                            } else {
+                                selectedP1Id = myOnlineCharId;
+                                selectedP2Id = remotePeerCharId;
+                            }
+                            executeOnlineMatchStart();
                         }
-                        executeOnlineMatchStart();
                     }
                 } else if (pkt.type === 'pad') {
                     remoteOnlinePad.left  = pkt.left;
@@ -15148,12 +15130,20 @@ function initAll30CharsPatch() {
                         startNextRound();
                     }
                 } else if (pkt.type === 'rematch') {
-                    myReadyState = false;
+                    // ★相手が選択画面へ戻った時の処理：まだ自分が試合画面にいた場合のみ選択画面へ戻し、すでに選択画面で準備中なら自分のReadyを消さない！
+                    lastMatchLaunchTimestamp = 0;
                     remoteReadyState = false;
-                    isLaunchingMatch = false;
                     clearLaunchRetryTimers();
-                    if (gameState === 'match_over' || gameState === 'round_end' || gameState === 'playing') {
-                        backToSelect();
+                    if (!isSelectScreenVisibleNow()) {
+                        myReadyState = false;
+                        isHandlingRematchPacket = true;
+                        try {
+                            backToSelect();
+                        } finally {
+                            isHandlingRematchPacket = false;
+                        }
+                    } else {
+                        refreshCharacterCardsUI();
                     }
                 }
             } catch (err) {}
@@ -15173,7 +15163,7 @@ function initAll30CharsPatch() {
     }
 
     // =========================================================================
-    // 6. キャラ選択＆両者READYボタン＆暗号限定3キャラ（ムサシ・神父・看護師長）カード表示
+    // 6. キャラ選択＆両者READYボタン＆2回戦目以降の確実な開始制御
     // =========================================================================
     var origOpenModeForOnline = window.openMode;
     window.openMode = function(mode) {
@@ -15200,7 +15190,7 @@ function initAll30CharsPatch() {
             playCharSelectVoice(charId);
             myOnlineCharId = charId;
             myReadyState = false;
-            isLaunchingMatch = false;
+            lastMatchLaunchTimestamp = 0;
             if (onlineRole === 'host') {
                 selectedP1Id = myOnlineCharId;
                 selectedP2Id = remotePeerCharId;
@@ -15224,7 +15214,6 @@ function initAll30CharsPatch() {
             window.selectP1(charId);
             return;
         }
-        // 暗号限定3キャラはチャレンジ・サバイバルの敵（CPU側）としては選択不可
         if (isPasscodeOnlyChar(charId) && (gameMode === 'challenge' || gameMode === 'survival' || !isSecretPassUnlocked)) {
             sfx.init(); sfx.block(); showSecretToast(charId);
             return;
@@ -15430,7 +15419,14 @@ function initAll30CharsPatch() {
         }
     };
 
+    // ★試合開始実行関数：開始した瞬間に myReadyState と remoteReadyState を false にクリアし、選択画面ハートビートを停止！
+    // また、2回戦目以降でも必ず p1RoundWins=0, p2RoundWins=0, currentRound=1 からフレッシュに始まるよう保証！
     function executeOnlineMatchStart() {
+        stopSelectHeartbeat();
+        myReadyState = false;
+        remoteReadyState = false;
+        wasInSelectScreenLastFrame = false;
+
         bindOnlinePadEvents();
         enforceAlleyStageAndRockBgm(true);
 
@@ -15451,6 +15447,12 @@ function initAll30CharsPatch() {
 
         syncMoveLabelDictionaryForRole();
 
+        // 本体側の startGame() がもし `if (gameState !== 'select') return;` を持っていても絶対に弾かれないよう、呼び出し直前に gameState = 'select' を保証
+        try { gameState = 'select'; } catch (e) {}
+        try { if (typeof p1RoundWins !== 'undefined') p1RoundWins = 0; } catch (e) {}
+        try { if (typeof p2RoundWins !== 'undefined') p2RoundWins = 0; } catch (e) {}
+        try { if (typeof currentRound !== 'undefined') currentRound = 1; } catch (e) {}
+
         var savedV1 = vsUnlocked[selectedP1Id];
         var savedV2 = vsUnlocked[selectedP2Id];
         var savedC1 = challengeUnlocked[selectedP1Id];
@@ -15468,6 +15470,13 @@ function initAll30CharsPatch() {
             challengeUnlocked[selectedP1Id] = savedC1;
             challengeUnlocked[selectedP2Id] = savedC2;
         }
+
+        // 万が一キャラ選択画面が閉じられていなかった場合も確実に閉じてバトルを開始
+        var cs = document.getElementById('char-select-screen');
+        if (cs && !cs.classList.contains('hidden')) {
+            cs.classList.add('hidden');
+        }
+        try { gameState = 'playing'; } catch (e) {}
 
         if (player1 && player2) {
             player1.x = 240;
@@ -15499,13 +15508,23 @@ function initAll30CharsPatch() {
         enforceAlleyStageAndRockBgm(true);
         if (isOnlineMode && onlineConnected) {
             sfx.init();
+            // ★相手がすでに準備完了（remoteReadyState === true）の時、または両者が準備完了の時にスタートボタンを押したら、解除ではなく即座に試合を開始する！
+            if (remoteReadyState) {
+                myReadyState = true;
+                sfx.superFlash();
+                sendOnlinePacket(getMyCharPacket('ready_sync', true));
+                refreshCharacterCardsUI();
+                checkAndTriggerBothReadyLaunch(true);
+                return;
+            }
+
             myReadyState = !myReadyState;
             if (myReadyState) sfx.superFlash();
             else sfx.block();
 
             sendOnlinePacket(getMyCharPacket('ready_sync', myReadyState));
             refreshCharacterCardsUI();
-            checkAndTriggerBothReadyLaunch();
+            checkAndTriggerBothReadyLaunch(false);
             return;
         }
         var discBtn = document.getElementById('btn-online-battle-disconnect');
@@ -15596,8 +15615,6 @@ function initAll30CharsPatch() {
 
     var prevResolveHitOnline = resolveHit;
     resolveHit = function(attacker, defender, move) {
-        // ★ 1) 👓 看護師長の特殊スキル『どんな攻撃も跳ね返す絶対指導反射』！
-        // 看護師長自身はダメージ0＆のけぞり無効で、攻撃してきた相手にそのままダメージを100%跳ね返す！
         if (defender && defender.id === 'matron' && attacker && attacker !== defender) {
             sfx.matronReflectSound();
             sfx.hitHeavy();
@@ -15633,7 +15650,6 @@ function initAll30CharsPatch() {
             return;
         }
 
-        // ★ 2) 🐉 ドラゴンの飛行中は「今の文字」をそのまま出しつつダメージ0（完全無敵）にする
         if (defender && defender.id === 'dragon' && !defender.isGrounded) {
             var savedHp      = defender.hp;
             var savedDispHp  = defender.displayHp;
@@ -15681,14 +15697,12 @@ function initAll30CharsPatch() {
         var prevHp = defender ? defender.hp : 0;
         prevResolveHitOnline(attacker, defender, move);
 
-        // ⚔️ 零式・ムサシの固有パッシブ『心眼・見切り』（ガード時の削りダメージを75%軽減）
         if (defender && defender.id === 'musashi' && defender.isBlocking && !move.isGuardBreak && !move.isSuper && defender.hp < prevHp) {
             var lostChip = prevHp - defender.hp;
             defender.hp = Math.min(defender.maxHp, prevHp - Math.max(1, Math.round(lostChip * 0.25)));
             spawnCallout('⚔️ 心眼・見切り!! (削り75%軽減)', defender.x, defender.y - 145, '#22d3ee');
         }
 
-        // ⚔️ 零式・ムサシの固有攻撃効果
         if (attacker && attacker.id === 'musashi' && defender && defender.hp > 0) {
             if (move.isMusashiBleed) {
                 defender.burnTimer = 180;
@@ -15703,7 +15717,6 @@ function initAll30CharsPatch() {
             }
         }
 
-        // ✝️ ヨハネ神父の固有攻撃効果（強：悪魔の獄炎 / 必殺・超：神と悪魔の同時裁き）
         if (attacker && attacker.id === 'father' && defender && defender.hp > 0) {
             if (move.isDemonHellfire) {
                 defender.burnTimer = 180;
@@ -15747,6 +15760,18 @@ function initAll30CharsPatch() {
             });
         }
         prevHandleRoundEndOnline(roundWinner);
+
+        // ★1回戦（三本勝負）の決着がついた瞬間に、次の2回戦に向けてクールダウンとReady状態を事前クリア
+        if (isOnlineMode && onlineConnected) {
+            var w1 = (typeof p1RoundWins === 'number') ? p1RoundWins : 0;
+            var w2 = (typeof p2RoundWins === 'number') ? p2RoundWins : 0;
+            if (w1 >= 2 || w2 >= 2 || gameState === 'match_over') {
+                myReadyState = false;
+                remoteReadyState = false;
+                lastMatchLaunchTimestamp = 0;
+                clearLaunchRetryTimers();
+            }
+        }
     };
 
     function driveFighterWithPad(f, pad, opponent) {
@@ -15799,11 +15824,9 @@ function initAll30CharsPatch() {
         }
     }
 
-    // ★看護師長の「状態異常完全無効＆時間経過で体力が徐々に減って自滅する」処理を毎フレーム適用するヘルパー
     function processMatronAutoSelfDestruct(fighter, opponent) {
         if (!fighter || fighter.id !== 'matron' || gameState !== 'playing' || fighter.hp <= 0) return;
 
-        // 外部からの状態異常（時間停止・氷結・無重力・感染・火傷等）はすべて跳ね返して無効化
         fighter.timeStopTimer    = 0;
         fighter.freezeTimer      = 0;
         fighter.zeroGravityTimer = 0;
@@ -15817,7 +15840,6 @@ function initAll30CharsPatch() {
             fighter.stateTimer = 0;
         }
 
-        // 約26秒（1560フレーム）で最大HPから0まで徐々に減っていく自滅スリップ
         var drainAmount = fighter.maxHp / (26 * 60);
         fighter.hp = Math.max(0, fighter.hp - drainAmount);
 
@@ -16005,17 +16027,20 @@ function initAll30CharsPatch() {
         if (discBtn) discBtn.classList.add('hidden');
         myReadyState = false;
         remoteReadyState = false;
-        isLaunchingMatch = false;
+        lastMatchLaunchTimestamp = 0;
         clearLaunchRetryTimers();
-        if (isOnlineMode && onlineConnected) {
+        if (isOnlineMode && onlineConnected && !isHandlingRematchPacket) {
             sendOnlinePacket({ type: 'rematch' });
-            startSelectHeartbeat();
         }
         prevBackToSelectOnline();
+        if (isOnlineMode && onlineConnected) {
+            startSelectHeartbeat();
+            refreshCharacterCardsUI();
+        }
         enforceAlleyStageAndRockBgm(true);
     };
 
-    function initOnlineVsPatchV14() {
+    function initOnlineVsPatchV15() {
         ensureSecretPassCharsDOM();
         backupOriginalMoveLabels();
         injectOnlineUI();
@@ -16024,8 +16049,8 @@ function initAll30CharsPatch() {
         refreshCharacterCardsUI();
     }
 
-    initOnlineVsPatchV14();
-    window.addEventListener('DOMContentLoaded', initOnlineVsPatchV14);
+    initOnlineVsPatchV15();
+    window.addEventListener('DOMContentLoaded', initOnlineVsPatchV15);
 })();
 </script>
 </body>
